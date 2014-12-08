@@ -1,0 +1,50 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/hello_world"
+        android:visibility="invisible" />
+
+    <Button
+        android:id="@+id/btn_create_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/create_group"
+        android:textStyle="bold"
+        android:visibility="visible" />
+
+    <fragment
+        android:id="@+id/frag_facebook"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/facebook_height"
+        class="edu.ucla.discoverfriend.FacebookFragment" >
+
+        <!-- Preview: layout=@layout/row_devices -->
+    </fragment>
+
+    <fragment
+        android:id="@+id/frag_list"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/phone_list_height"
+        class="edu.ucla.discoverfriend.DeviceListFragment" >
+
+        <!-- Preview: layout=@layout/row_devices -->
+    </fragment>
+
+    <fragment
+        android:id="@+id/frag_detail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        class="edu.ucla.discoverfriend.DeviceDetailFragment" >
+
+        <!-- Preview: layout=@layout/device_detail -->
+    </fragment>
+
+</LinearLayout>
