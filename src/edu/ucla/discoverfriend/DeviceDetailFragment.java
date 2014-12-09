@@ -359,7 +359,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		@Override
 		protected void onPostExecute(CustomNetworkPacket result) {
 			if (result != null) {
-				statusText.setText(result.getCf());
+				statusText.setText(result.getCrt().toString());
 				
 				// Check if current user is social network friends with sender.
 				if (result.getBf().mightContain(uid)) {

@@ -1,5 +1,9 @@
 package edu.ucla.discoverfriend;
 
+import java.io.File;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.security.cert.X509Certificate;
 import java.util.List;
 
 import android.app.Activity;
@@ -8,6 +12,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.drm.DrmStore.ConstraintsColumns;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -32,13 +37,15 @@ import com.facebook.SessionState;
 import com.facebook.model.GraphUser;
 import com.google.common.hash.BloomFilter;
 
+import edu.ucla.common.Constants;
 import edu.ucla.discoverfriend.DeviceListFragment.DeviceActionListener;
 import edu.ucla.discoverfriend.FacebookFragment.OnQueryClickListener;
+import edu.ucla.encryption.KeyRepository;
 
 public class MainActivity extends Activity implements ChannelListener, DeviceActionListener, OnQueryClickListener {
 
 	public static final String TAG = "MainActivity";
-	
+
 	private TextView textView1;
 
 	private WifiP2pManager manager;
@@ -130,10 +137,10 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 				createGroup();
 				textView1.setText("Created group owner as me.");
-				
+
 				DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
 				List<WifiP2pDevice> peers = fragmentDetails.getPeers();
-				
+
 				// TODO: Multithread connections for multiple connected devices.
 				if (!peers.isEmpty()) {
 					WifiP2pConfig config;
@@ -156,7 +163,29 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 			}
 		});
+
 		
+		Log.i(TAG, "Checking shared preferences.");
+		//SharedPreferences prefs = this.getSharedPreferences(TAG, Context.MODE_PRIVATE);
+		//if (!prefs.getBoolean("firstTime", false)) {
+			Log.i(TAG, "Attempting to create local keystore.");
+
+			try {
+				KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath());
+				Log.i(TAG, "Created local keystore.");
+			} catch (GeneralSecurityException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				Log.e(TAG, "File write failed: " + e.toString());
+			}
+
+			// mark first time has runned.
+			//SharedPreferences.Editor editor = prefs.edit();
+			//editor.putBoolean("firstTime", true);
+			//editor.commit();
+		//}
+
 	}
 
 	@Override
@@ -257,7 +286,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		DeviceDetailFragment fragment = (DeviceDetailFragment) getFragmentManager().findFragmentById(R.id.frag_detail);
 		fragment.showDetails(device);
 	}
-	
+
 	@Override
 	public void connect(WifiP2pConfig config) {
 		manager.connect(channel, config, new ActionListener() {
@@ -274,7 +303,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 			}
 		});
 	}
-	
+
 	@Override
 	public void createGroup() {
 		manager.createGroup(channel, new ActionListener() {
@@ -363,10 +392,10 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 	}
 
 	@Override
-	public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfc) {
-		cnp = new CustomNetworkPacket(bf, bfc, "TEST_STRING");
+	public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfc, X509Certificate crt) {
+		cnp = new CustomNetworkPacket(bf, bfc, crt);
 		textView1.setText("Bloom Filters generated from query.");
 	}
 
-	
+
 }

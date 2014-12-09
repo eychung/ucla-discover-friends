@@ -1,5 +1,15 @@
 package edu.ucla.discoverfriend;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream.GetField;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,6 +37,8 @@ import com.google.common.base.Charsets;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnel;
 import com.google.common.hash.PrimitiveSink;
+
+import edu.ucla.common.Constants;
 
 public class FacebookFragment extends Fragment {
 
@@ -87,12 +99,8 @@ public class FacebookFragment extends Fragment {
 		queryButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				String fqlQuery = "SELECT uid, name, pic_square FROM user WHERE uid IN " +
-				"(SELECT uid2 FROM friend WHERE uid1 = me())";
-				Bundle params = new Bundle();
-				params.putString("q", fqlQuery);
 				Session session = Session.getActiveSession();
-				Request request = new Request(session, "/fql", params, HttpMethod.GET, new Request.Callback() {
+				Request request = new Request(session, "/me/friends", null, HttpMethod.GET, new Request.Callback() {
 					public void onCompleted(Response response) {
 						try {
 							GraphObject graphObject = response.getGraphObject();
@@ -108,7 +116,8 @@ public class FacebookFragment extends Fragment {
 								// EXPECTED_INSERTIONS and FALSE_POSITIVE_PROBABILITY are used to calculate
 								// optimalNumOfBits and consequently, numHashFunctions. Guava uses built-in
 								// BloomFilterStrategies.MURMUR128_MITZ_32 as hashing function.
-								BloomFilter<String> bf = BloomFilter.create(new StringFunnel(), EXPECTED_INSERTIONS, FALSE_POSITIVE_PROBABILITY);
+								BloomFilter<String> bf = BloomFilter.create(new StringFunnel(), 
+										EXPECTED_INSERTIONS, FALSE_POSITIVE_PROBABILITY);
 
 								for(int i = 0; i < friendsData.length(); i++){ 
 									ids[i] = friendsData.getJSONObject(i).getString("uid");
@@ -124,7 +133,16 @@ public class FacebookFragment extends Fragment {
 								BloomFilter<String> bfc = bf.copy();
 								bfc.put(getUid());
 								
-								mListener.onQueryClick(bf, bfc);
+								FileInputStream is = new FileInputStream(getActivity().getFilesDir().getAbsolutePath() +
+										Constants.KEYSTORE_NAME);
+
+							    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+							    keystore.load(is, "password".toCharArray());
+							    X509Certificate crt = (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
+							    
+							    Log.i(TAG, "Certificate: " + crt.toString());
+								
+								mListener.onQueryClick(bf, bfc, crt);
 
 							}
 
@@ -133,6 +151,21 @@ public class FacebookFragment extends Fragment {
 							e.printStackTrace();
 						} catch (JSONException e) {
 							Log.e(TAG, "JSON parsing error: " + e.getMessage());
+						} catch (KeyStoreException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (FileNotFoundException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (NoSuchAlgorithmException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (CertificateException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
 
 						Log.i(TAG, "Result: " + response.toString());
@@ -209,7 +242,7 @@ public class FacebookFragment extends Fragment {
 	}
 
 	public interface OnQueryClickListener {
-		public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfc);
+		public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfc, X509Certificate crt);
 	}
 
 	@Override

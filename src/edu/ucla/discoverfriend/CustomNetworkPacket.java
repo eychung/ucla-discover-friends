@@ -1,22 +1,20 @@
 package edu.ucla.discoverfriend;
 
 import java.io.Serializable;
+import java.security.cert.X509Certificate;
 
 import com.google.common.hash.BloomFilter;
 
 public class CustomNetworkPacket implements Serializable {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private BloomFilter<String> bf;	
 	private BloomFilter<String> bfc;
-	private String cf = "certificate";
+	private X509Certificate crt;
 	
-	public CustomNetworkPacket(BloomFilter<String> bf, BloomFilter<String> bfc, String cf) {
+	public CustomNetworkPacket(BloomFilter<String> bf, BloomFilter<String> bfc, X509Certificate crt) {
 		this.bf = bf;
 		this.bfc = bfc;
-		this.cf = cf;
+		this.crt = crt;
 	}
 
 	public BloomFilter<String> getBf() {
@@ -35,12 +33,12 @@ public class CustomNetworkPacket implements Serializable {
 		this.bfc = bfc;
 	}
 	
-	public String getCf() {
-		return cf;
+	public X509Certificate getCrt() {
+		return crt;
 	}
 
-	public void setCf(String cf) {
-		this.cf = cf;
+	public void setCrt(X509Certificate crt) {
+		this.crt = crt;
 	}
 	
 }
