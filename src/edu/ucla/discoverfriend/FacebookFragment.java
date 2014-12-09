@@ -3,7 +3,6 @@ package edu.ucla.discoverfriend;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectInputStream.GetField;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -45,7 +44,7 @@ public class FacebookFragment extends Fragment {
 	private static final String TAG = "FacebookFragment";
 	private String uid = "";
 	
-	private static final int EXPECTED_INSERTIONS = 2000;
+	private static final int EXPECTED_INSERTIONS = 1000;
 	private static final double FALSE_POSITIVE_PROBABILITY = 0.02;
 
 	private UiLifecycleHelper uiHelper;
@@ -135,11 +134,13 @@ public class FacebookFragment extends Fragment {
 								
 								FileInputStream is = new FileInputStream(getActivity().getFilesDir().getAbsolutePath() +
 										Constants.KEYSTORE_NAME);
-
 							    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 							    keystore.load(is, "password".toCharArray());
 							    X509Certificate crt = (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
+							    is.close();
 							    
+							    Log.i(TAG, "BF: " + bf.toString());
+							    Log.i(TAG, "BFC: " + bfc.toString());
 							    Log.i(TAG, "Certificate: " + crt.toString());
 								
 								mListener.onQueryClick(bf, bfc, crt);
