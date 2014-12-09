@@ -9,8 +9,8 @@ import edu.ucla.common.Utils;
 
 public class Evaluation {
 	public static void calculateEncryptedMessageSize() throws Exception {
-		String id = Utils.getRandomName(10);
-		byte[] key = ByteBuffer.allocate(4).putInt(id.hashCode()).array();
+		byte[] key = Utils.getRandomName(10).getBytes("UTF-8");
+		System.out.println(key.length);
 		char[] message = new char[160];
 		System.out.println(message.length);
 		byte[] plaintext = Utils.toBytes(message); //Charset.forName("UTF-8").encode(CharBuffer.wrap(message)).array();
