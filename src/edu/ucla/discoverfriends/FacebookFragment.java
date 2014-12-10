@@ -1,8 +1,12 @@
 package edu.ucla.discoverfriends;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -38,7 +42,9 @@ import com.google.common.hash.Funnel;
 import com.google.common.hash.PrimitiveSink;
 
 import edu.ucla.common.Constants;
+import edu.ucla.common.Utils;
 import edu.ucla.discoverfriend.R;
+import edu.ucla.encryption.AES;
 
 public class FacebookFragment extends Fragment {
 
@@ -122,29 +128,31 @@ public class FacebookFragment extends Fragment {
 								for(int i = 0; i < friendsData.length(); i++){ 
 									ids[i] = friendsData.getJSONObject(i).getString("uid");
 									names[i] = friendsData.getJSONObject(i).getString("name");
-									bf.put(ids[i]);
+									bf.put(Utils.hash(ids[i]));
 								}
-								Log.d(TAG, "" + ids.length);
-								Log.d(TAG, bf.toString());
-								Log.d(TAG, getUid());
 								
 								friendId = ids;
 
-								BloomFilter<String> bfc = bf.copy();
-								bfc.put(getUid());
+								BloomFilter<String> bfp = bf.copy();
+								bfp.put(Utils.hash(getUid()));
 								
 								FileInputStream is = new FileInputStream(getActivity().getFilesDir().getAbsolutePath() +
 										Constants.KEYSTORE_NAME);
 							    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 							    keystore.load(is, "password".toCharArray());
-							    X509Certificate crt = (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
 							    is.close();
+							    X509Certificate crt = (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
 							    
-							    Log.i(TAG, "BF: " + bf.toString());
-							    Log.i(TAG, "BFC: " + bfc.toString());
-							    Log.i(TAG, "Certificate: " + crt.toString());
-								
-								mListener.onQueryClick(bf, bfc, crt);
+							    // Encrypt certificate with AES, using hash of initiator's ID as hash.
+							    ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
+								ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
+								outputStream.writeObject(crt);
+								outputStream.flush();
+								byte[] cf = byteStream.toByteArray();
+								byte[] key = Utils.hash(getUid()).getBytes(Charset.forName("UTF-8"));
+								byte[] ecf = AES.encrypt(key, cf);
+							    
+								mListener.onQueryClick(bf, bfp, ecf);
 
 							}
 
@@ -166,6 +174,9 @@ public class FacebookFragment extends Fragment {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
@@ -244,7 +255,7 @@ public class FacebookFragment extends Fragment {
 	}
 
 	public interface OnQueryClickListener {
-		public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfc, X509Certificate crt);
+		public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfp, byte[] ec);
 	}
 
 	@Override

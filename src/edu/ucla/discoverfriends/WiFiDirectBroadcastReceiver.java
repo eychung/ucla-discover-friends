@@ -28,10 +28,12 @@ import android.net.wifi.p2p.WifiP2pManager.PeerListListener;
 import android.util.Log;
 
 /**
- * A BroadcastReceiver that notifies of important wifi p2p events.
+ * A BroadcastReceiver that notifies of important Wi-Fi P2P events.
  */
 public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 
+	public static final String TAG = "WiFiDirectBroadcastReceiver";
+	
     private WifiP2pManager manager;
     private Channel channel;
     private MainActivity activity;
@@ -57,30 +59,34 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
+        
+        /*
+         * Checks to see if Wi-Fi P2P is enabled or disabled.
+         */
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
-
-            // UI update to indicate wifi p2p status.
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-                // WiFi Direct mode is enabled.
                 activity.setIsWifiP2pEnabled(true);
             } else {
                 activity.setIsWifiP2pEnabled(false);
                 activity.resetData();
-
             }
-            Log.d(MainActivity.TAG, "P2P state changed - " + state);
-        } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-
-            // Request available peers from the wifi p2p manager. This is an
-            // asynchronous call and the calling activity is notified with a
-            // callback on PeerListListener.onPeersAvailable().
+            Log.d(TAG, "P2P state: " + state);
+        }
+        
+        /*
+         *  Request available peers from the WifiP2pManager. This is an
+         *  asynchronous call and the calling activity is notified with a
+         *  callback on PeerListListener.onPeersAvailable().
+         */
+        else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
             if (manager != null) {
                 manager.requestPeers(channel, (PeerListListener) activity.getFragmentManager().findFragmentById(R.id.frag_list));
             }
-            Log.d(MainActivity.TAG, "P2P peers changed");
-        } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
-
+            Log.d(TAG, "Available peer list has changed and fetched new list of peers.");
+        }
+        
+        else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             if (manager == null) {
                 return;
             }
@@ -91,13 +97,16 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
                 DeviceDetailFragment fragment = (DeviceDetailFragment) activity.getFragmentManager().findFragmentById(R.id.frag_detail);
                 manager.requestGroupInfo(channel, fragment);
             } else {
-                // It's a disconnect.
                 activity.resetData();
             }
-        } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
+        }
+        
+        /*
+         * This device details have changed.
+         */
+        else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             DeviceListFragment fragment = (DeviceListFragment) activity.getFragmentManager().findFragmentById(R.id.frag_list);
             fragment.updateThisDevice((WifiP2pDevice) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
-
         }
     }
 }

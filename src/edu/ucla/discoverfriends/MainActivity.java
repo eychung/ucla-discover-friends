@@ -1,9 +1,9 @@
 package edu.ucla.discoverfriends;
 
-import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.security.cert.X509Certificate;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import android.app.Activity;
@@ -12,7 +12,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.drm.DrmStore.ConstraintsColumns;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.Signature;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -22,6 +25,7 @@ import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.net.wifi.p2p.WifiP2pManager.ChannelListener;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -37,12 +41,22 @@ import com.facebook.SessionState;
 import com.facebook.model.GraphUser;
 import com.google.common.hash.BloomFilter;
 
-import edu.ucla.common.Constants;
 import edu.ucla.discoverfriend.R;
 import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
 import edu.ucla.discoverfriends.FacebookFragment.OnQueryClickListener;
 import edu.ucla.encryption.KeyRepository;
 
+/**
+ * 
+ * @author 530un
+ * https://code.google.com/p/boxeeremote/wiki/AndroidUDP
+ * https://code.google.com/p/boxeeremote/source/browse/trunk/Boxee+Remote/src/com/andrewchatham/Discoverer.java?spec=svn28&r=28
+ * http://stackoverflow.com/questions/11089232/udp-packets-via-wifi-direct-never-arrive
+ * http://stackoverflow.com/questions/3997459/send-and-receive-serialize-object-on-udp
+ * http://michieldemey.be/blog/network-discovery-using-udp-broadcast/
+ * http://www.javaworld.com/article/2077539/learn-java/java-tip-40--object-transport-via-datagram-packets.html
+ * http://docs.oracle.com/javase/tutorial/networking/datagrams/clientServer.html
+ */
 public class MainActivity extends Activity implements ChannelListener, DeviceActionListener, OnQueryClickListener {
 
 	public static final String TAG = "MainActivity";
@@ -59,7 +73,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 	ProgressDialog progressDialog = null;
 
-	CustomNetworkPacket cnp = null;
+	SetupNetworkPacket cnp = null;
 
 	public WifiP2pManager getManager() {
 		return manager;
@@ -69,7 +83,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		return channel;
 	}
 
-	public CustomNetworkPacket getCnp() {
+	public SetupNetworkPacket getCnp() {
 		return cnp;
 	}
 
@@ -91,10 +105,10 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		// Indicates a change in the list of available peers.
 		intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
 
-		// Indicates the state of Wi-Fi P2P connectivity has changed.
+		// Indicates a change in the state of Wi-Fi P2P connectivity.
 		intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
 
-		// Indicates this device's details have changed.
+		// Indicates a change in this device's details.
 		intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
 
 		manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
@@ -165,27 +179,46 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 			}
 		});
 
-		
+
 		Log.i(TAG, "Checking shared preferences.");
 		//SharedPreferences prefs = this.getSharedPreferences(TAG, Context.MODE_PRIVATE);
 		//if (!prefs.getBoolean("firstTime", false)) {
-			Log.i(TAG, "Attempting to create local keystore.");
+		Log.i(TAG, "Attempting to create local keystore.");
 
-			try {
-				KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath());
-				Log.i(TAG, "Created local keystore.");
-			} catch (GeneralSecurityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				Log.e(TAG, "File write failed: " + e.toString());
-			}
+		try {
+			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath());
+			Log.i(TAG, "Created local keystore.");
+		} catch (GeneralSecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			Log.e(TAG, "File write failed: " + e.toString());
+		}
 
-			// mark first time has runned.
-			//SharedPreferences.Editor editor = prefs.edit();
-			//editor.putBoolean("firstTime", true);
-			//editor.commit();
+		// mark first time has runned.
+		//SharedPreferences.Editor editor = prefs.edit();
+		//editor.putBoolean("firstTime", true);
+		//editor.commit();
 		//}
+
+		try {
+			PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(),
+					PackageManager.GET_SIGNATURES);
+			for (Signature signature : packageInfo.signatures) {
+				MessageDigest md = MessageDigest.getInstance("SHA");
+				md.update(signature.toByteArray());
+				Log.d("KeyHash:", Base64.encodeToString(md.digest(), Base64.DEFAULT));
+			}
+		}
+		catch (NameNotFoundException e1) {
+			Log.e("Name not found", e1.toString());
+		}
+		catch (NoSuchAlgorithmException e) {
+			Log.e("No such an algorithm", e.toString());
+		}
+		catch (Exception e){
+			Log.e("Exception", e.toString());
+		}
 
 	}
 
@@ -393,8 +426,8 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 	}
 
 	@Override
-	public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfc, X509Certificate crt) {
-		cnp = new CustomNetworkPacket(bf, bfc, crt);
+	public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfp, byte[] ecf) {
+		cnp = new SetupNetworkPacket(bf, bfp, ecf);
 		textView1.setText("Bloom Filters generated from query.");
 	}
 

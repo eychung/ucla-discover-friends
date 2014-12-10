@@ -44,6 +44,7 @@ import android.widget.TextView;
 
 import com.google.common.hash.BloomFilter;
 
+import edu.ucla.common.Constants;
 import edu.ucla.discoverfriend.R;
 import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
 
@@ -60,7 +61,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	private WifiP2pInfo info;
 	ProgressDialog progressDialog = null;
 	
-	CustomNetworkPacket receivedCNP = null;
+	SetupNetworkPacket receivedCNP = null;
 
 	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
@@ -120,7 +121,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 						
 						Intent serviceIntent = new Intent(getActivity(), DataTransferService.class);
 						Bundle extras = new Bundle();
-						extras.putSerializable(DataTransferService.EXTRAS_DATA, ((MainActivity) getActivity()).getCnp());
+						extras.putSerializable(DataTransferService.EXTRAS_SNP, ((MainActivity) getActivity()).getCnp());
+						extras.putString(Constants.USER_LABEL, Constants.USER_INITIATOR);
 						serviceIntent.setAction(DataTransferService.NETWORK_INITIATOR_SETUP);
 						serviceIntent.putExtras(extras);
 						getActivity().startService(serviceIntent);
@@ -139,9 +141,9 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 							FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
 							String ids[] = fragment.getFriendId();
 							BloomFilter<String> bf = receivedCNP.getBf();
-							BloomFilter<String> bfc = receivedCNP.getBfc();
+							BloomFilter<String> bfp = receivedCNP.getBfp();
 							for (int i=0; i<ids.length; i++) {
-								if (bfc.mightContain(ids[i]) && !bf.mightContain(ids[i])) {
+								if (bfp.mightContain(ids[i]) && !bf.mightContain(ids[i])) {
 									// The current friend is the initiator.
 								}
 							}
@@ -200,7 +202,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	
 
 	/**
-	 * Note: Legacy devices connected through WiFi do not enter through this
+	 * Note: Legacy devices connected through Wi-Fi do not enter through this
 	 * flow. Although the peer list includes them in group.getClientList(),
 	 * the PeerListListener only reflects changes in connections made by
 	 * WiFi Direct compatible devices.
@@ -292,7 +294,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	 * A simple client socket that accepts connection and writes some data on
 	 * the stream.
 	 */
-	public static class ClientAsyncTask extends AsyncTask<Void, Void, CustomNetworkPacket> {
+	public static class ClientAsyncTask extends AsyncTask<Void, Void, SetupNetworkPacket> {
 		
 		private Context context;
 		private TextView statusText;
@@ -300,13 +302,13 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		private String uid;
 		private Button btn_yes;
 		private Button btn_no;
-		private CustomNetworkPacket receivedCNP;
+		private SetupNetworkPacket receivedCNP;
 
 		/**
 		 * @param context
 		 * @param statusText
 		 */
-		public ClientAsyncTask(Context context, View statusText, Button btn_yes, Button btn_no, String host, String uid, CustomNetworkPacket receivedCNP) {
+		public ClientAsyncTask(Context context, View statusText, Button btn_yes, Button btn_no, String host, String uid, SetupNetworkPacket receivedCNP) {
 			this.context = context;
 			this.statusText = (TextView) statusText;
 			this.host = host;
@@ -317,7 +319,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		}
 
 		@Override
-		protected CustomNetworkPacket doInBackground(Void... params) {
+		protected SetupNetworkPacket doInBackground(Void... params) {
 			Socket socket = new Socket();
 			int port = 8988;
 
@@ -330,7 +332,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 				
 				InputStream inputstream = socket.getInputStream();
 				ObjectInputStream ois = new ObjectInputStream(inputstream);
-				CustomNetworkPacket cnp = (CustomNetworkPacket) ois.readObject();
+				SetupNetworkPacket cnp = (SetupNetworkPacket) ois.readObject();
 
 				return cnp;
 			} catch (IOException e) {
@@ -358,9 +360,9 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		 * @see android.os.AsyncTask#onPostExecute(java.lang.Object)
 		 */
 		@Override
-		protected void onPostExecute(CustomNetworkPacket result) {
+		protected void onPostExecute(SetupNetworkPacket result) {
 			if (result != null) {
-				statusText.setText(result.getCrt().toString());
+				//statusText.setText(result.getCrt().toString());
 				
 				// Check if current user is social network friends with sender.
 				if (result.getBf().mightContain(uid)) {

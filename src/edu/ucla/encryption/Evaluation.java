@@ -1,9 +1,6 @@
 package edu.ucla.encryption;
 
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.util.Arrays;
+import java.security.NoSuchAlgorithmException;
 
 import edu.ucla.common.Utils;
 
@@ -17,6 +14,17 @@ public class Evaluation {
 		System.out.println(plaintext.length);
 		byte[] encrypted = AES.encrypt(key, plaintext);
 		System.out.println(encrypted.length);
+	}
+	
+	public static void testHash() throws NoSuchAlgorithmException {
+		String uid = Utils.getRandomName(10);
+		System.out.println(uid);
+		String hashedUid = Utils.hash(uid);
+		System.out.println(hashedUid);
+		hashedUid = Utils.hash(uid);
+		System.out.println(hashedUid);
+		hashedUid = Utils.hash(uid);
+		System.out.println(hashedUid);
 	}
 	
 	/**
@@ -37,7 +45,9 @@ public class Evaluation {
 		//KeyRepository.createUserKeyStore("");
 		//KeyRepository.exportCertificate();
 		
-		 calculateEncryptedMessageSize();
+		 //calculateEncryptedMessageSize();
+
+		testHash();
 	}
 
 }
