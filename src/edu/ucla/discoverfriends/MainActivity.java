@@ -1,9 +1,19 @@
 package edu.ucla.discoverfriends;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.List;
 
 import android.app.Activity;
@@ -41,9 +51,11 @@ import com.facebook.SessionState;
 import com.facebook.model.GraphUser;
 import com.google.common.hash.BloomFilter;
 
-import edu.ucla.discoverfriend.R;
+import edu.ucla.common.Constants;
+import edu.ucla.common.Utils;
 import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
-import edu.ucla.discoverfriends.FacebookFragment.OnQueryClickListener;
+import edu.ucla.discoverfriends.FacebookFragment.FacebookFragmentListener;
+import edu.ucla.encryption.AES;
 import edu.ucla.encryption.KeyRepository;
 
 /**
@@ -57,7 +69,7 @@ import edu.ucla.encryption.KeyRepository;
  * http://www.javaworld.com/article/2077539/learn-java/java-tip-40--object-transport-via-datagram-packets.html
  * http://docs.oracle.com/javase/tutorial/networking/datagrams/clientServer.html
  */
-public class MainActivity extends Activity implements ChannelListener, DeviceActionListener, OnQueryClickListener {
+public class MainActivity extends Activity implements ChannelListener, DeviceActionListener, FacebookFragmentListener {
 
 	public static final String TAG = "MainActivity";
 
@@ -73,7 +85,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 	ProgressDialog progressDialog = null;
 
-	SetupNetworkPacket cnp = null;
+	SetupNetworkPacket snp = null;
 
 	public WifiP2pManager getManager() {
 		return manager;
@@ -83,8 +95,8 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		return channel;
 	}
 
-	public SetupNetworkPacket getCnp() {
-		return cnp;
+	public SetupNetworkPacket getSnp() {
+		return snp;
 	}
 
 	/**
@@ -136,6 +148,8 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 								if (fragment != null) {
 									fragment.setUid(user.getId());
+									fragment.createSnp();
+									Log.i(TAG, "User ID set as " + user.getId());
 								}
 
 							}
@@ -157,6 +171,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 				List<WifiP2pDevice> peers = fragmentDetails.getPeers();
 
 				// TODO: Multithread connections for multiple connected devices.
+				// TODO: Should be done as an async task... or at least show when a client is connected.
 				if (!peers.isEmpty()) {
 					WifiP2pConfig config;
 
@@ -164,13 +179,16 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 						config = new WifiP2pConfig();
 						config.deviceAddress = peers.get(i).deviceAddress;
 						config.wps.setup = WpsInfo.PBC;
-						if (progressDialog != null && progressDialog.isShowing()) {
-							progressDialog.dismiss();
-						}
-
 						connect(config);
 
 					}
+
+					Intent serviceIntent = new Intent(MainActivity.this, DataTransferService.class);
+					Bundle extras = new Bundle();
+					extras.putSerializable(DataTransferService.EXTRAS_SNP, getSnp());
+					serviceIntent.setAction(DataTransferService.NETWORK_INITIATOR_SETUP);
+					serviceIntent.putExtras(extras);
+					startService(serviceIntent);
 				}
 				else {
 					textView1.setText("Peer list is empty so no connections established.");
@@ -178,7 +196,6 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 			}
 		});
-
 
 		Log.i(TAG, "Checking shared preferences.");
 		//SharedPreferences prefs = this.getSharedPreferences(TAG, Context.MODE_PRIVATE);
@@ -189,8 +206,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath());
 			Log.i(TAG, "Created local keystore.");
 		} catch (GeneralSecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(TAG, e.getMessage());
 		} catch (IOException e) {
 			Log.e(TAG, "File write failed: " + e.toString());
 		}
@@ -282,7 +298,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 				// not going to send us a result. We will be notified by
 				// WiFiDeviceBroadcastReceiver instead.
 
-				startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+				startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
 			} else {
 				Log.e(TAG, "channel or manager is null");
 			}
@@ -321,6 +337,10 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		fragment.showDetails(device);
 	}
 
+	/**
+	 * Calls WifiP2pManager to connect to a single device (WifiP2pConfig) on a
+	 * given channel.
+	 */
 	@Override
 	public void connect(WifiP2pConfig config) {
 		manager.connect(channel, config, new ActionListener() {
@@ -328,6 +348,7 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 			@Override
 			public void onSuccess() {
 				// WiFiDirectBroadcastReceiver will notify us. Ignore for now.
+				// Want to listen and increment total counts of successful connections.
 			}
 
 			@Override
@@ -338,6 +359,9 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		});
 	}
 
+	/**
+	 * Calls WifiP2pManager to create a group.
+	 */
 	@Override
 	public void createGroup() {
 		manager.createGroup(channel, new ActionListener() {
@@ -426,10 +450,46 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 	}
 
 	@Override
-	public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfp, byte[] ecf) {
-		cnp = new SetupNetworkPacket(bf, bfp, ecf);
-		textView1.setText("Bloom Filters generated from query.");
+	public void saveBfPair(BloomFilter<String> bf, BloomFilter<String> bfp) {
+		byte[] ecf;
+		try {
+			ecf = encryptCertificate(getOwnCertificate());
+			this.snp = new SetupNetworkPacket(bf, bfp, ecf);
+			textView1.setText("Bloom Filters generated from query.");
+		} catch (CertificateException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (KeyStoreException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (IOException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (Exception e) {
+			Log.e(TAG, e.getMessage());
+		}
 	}
 
+	public X509Certificate getOwnCertificate() throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException {
+		FileInputStream is = new FileInputStream(getFilesDir().getAbsolutePath() +
+				Constants.KEYSTORE_NAME);
+		KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+		keystore.load(is, "password".toCharArray());
+		is.close();
+		return (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
+	}
+
+	public byte[] encryptCertificate(X509Certificate crt) throws Exception {
+		FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
+
+		// Encrypt certificate with AES, using hash of initiator's ID as hash.
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
+		ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
+		outputStream.writeObject(crt);
+		outputStream.flush();
+		byte[] cf = byteStream.toByteArray();
+		byte[] key = Utils.hash(fragment.getUid()).getBytes(Charset.forName("UTF-8"));
+		byte[] ecf = AES.encrypt(key, cf);
+		return ecf;
+	}
 
 }

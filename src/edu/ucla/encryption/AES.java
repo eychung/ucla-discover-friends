@@ -1,6 +1,8 @@
 package edu.ucla.encryption;
 
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -22,6 +24,11 @@ public class AES {
 	
 	public static byte[] encrypt(byte[] key, byte[] plaintext)
 			throws Exception {
+		if (key.length != AES_KEYLENGTH) {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			key = sha.digest(key);
+			key = Arrays.copyOf(key, 16);
+		}
 		SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
 		Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 		cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
@@ -31,6 +38,11 @@ public class AES {
 
 	public static byte[] decrypt(byte[] key, byte[] ciphertext)
 			throws Exception {
+		if (key.length != AES_KEYLENGTH) {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			key = sha.digest(key);
+			key = Arrays.copyOf(key, 16);
+		}
 		SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
 		Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 		cipher.init(Cipher.DECRYPT_MODE, skeySpec);

@@ -16,7 +16,7 @@
 
 package edu.ucla.discoverfriends;
 
-import edu.ucla.discoverfriend.R;
+import edu.ucla.discoverfriends.R;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;

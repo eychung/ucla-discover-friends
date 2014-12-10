@@ -24,6 +24,7 @@ import com.google.common.hash.BloomFilter;
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
 import edu.ucla.encryption.AES;
+import edu.ucla.encryption.PKE;
 
 public class DataReceiver {
 	public static final String TAG = "DataReceiverService";
@@ -147,6 +148,8 @@ public class DataReceiver {
 	/**
 	 * InitiatorGetCertificateTask is run by the initiator to accept an
 	 * encrypted certificate from the target. Returns a decrypted certificate.
+	 * For simplicity, all certificates will be encrypted using the hash of the
+	 * initiator's ID as the key.
 	 */
 	public class InitiatorGetCertificateTask extends AsyncTask<byte[], Void, X509Certificate> {
 		
@@ -251,8 +254,7 @@ public class DataReceiver {
 			message = result;
 		}
 	}
-	
-	// TODO: TargetMessageListenerTask
+
 	/**
 	 * TargetMessageListenerTask is run by the target and waits for an
 	 * encrypted key and encrypted message pair from the initiator.
@@ -281,7 +283,7 @@ public class DataReceiver {
 
 					// Decrypt symmetric key using public key.
 					byte[] encryptedSymmetricKey = packet.getData();
-					byte[] symmetricKey = AES.decrypt(publicKey.getEncoded(), encryptedSymmetricKey);
+					byte[] symmetricKey = PKE.decrypt(publicKey, encryptedSymmetricKey);
 					
 					// From above, know the length of the payload.
 					byte[] packetSize = new byte[byteCount];
@@ -305,7 +307,7 @@ public class DataReceiver {
 		}
 
 		@Override
-		protected void onPostExecute(Pair result) {
+		protected void onPostExecute(Pair<byte[], String> result) {
 			pair = result;
 		}
 	}

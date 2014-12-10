@@ -36,13 +36,15 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.ucla.discoverfriend.R;
+import edu.ucla.discoverfriends.R;
 
 /**
  * A ListFragment that displays available peers on discovery and requests the
  * parent activity to handle user interaction events
  */
 public class DeviceListFragment extends ListFragment implements PeerListListener {
+	
+	private static final String TAG = "DeviceListFragment";
 
 	ProgressDialog progressDialog = null;
     View mContentView = null;
@@ -67,7 +69,7 @@ public class DeviceListFragment extends ListFragment implements PeerListListener
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        mContentView = inflater.inflate(R.layout.device_list, null);
+        mContentView = inflater.inflate(R.layout.device_list, container);
         return mContentView;
     }
 
@@ -173,7 +175,7 @@ public class DeviceListFragment extends ListFragment implements PeerListListener
         
         ((WiFiPeerListAdapter) getListAdapter()).notifyDataSetChanged();
         if (peers.size() == 0) {
-            Log.d(MainActivity.TAG, "No devices found");
+            Log.d(TAG, "No devices found");
             return;
         }
 
@@ -184,9 +186,7 @@ public class DeviceListFragment extends ListFragment implements PeerListListener
         ((WiFiPeerListAdapter) getListAdapter()).notifyDataSetChanged();
     }
 
-    /**
-     * 
-     */
+
     public void onInitiateDiscovery() {
         if (progressDialog != null && progressDialog.isShowing()) {
             progressDialog.dismiss();

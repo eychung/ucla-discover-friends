@@ -123,9 +123,9 @@ int drawable ic_launcher 0x7f020032
 int drawable icon 0x7f020033
 int drawable machine 0x7f020034
 int drawable section_header 0x7f020035
-int id action_settings 0x7f090041
-int id atn_direct_discover 0x7f090040
-int id atn_direct_enable 0x7f09003f
+int id action_settings 0x7f090040
+int id atn_direct_discover 0x7f09003f
+int id atn_direct_enable 0x7f09003e
 int id authButton 0x7f09003a
 int id bottom 0x7f090006
 int id box_count 0x7f090003
@@ -163,9 +163,9 @@ int id com_facebook_usersettingsfragment_login_button 0x7f09002a
 int id com_facebook_usersettingsfragment_logo_image 0x7f090028
 int id com_facebook_usersettingsfragment_profile_name 0x7f090029
 int id device_address 0x7f090030
-int id device_details 0x7f09003e
+int id device_details 0x7f09003d
 int id device_info 0x7f090031
-int id device_name 0x7f09003d
+int id device_name 0x7f09003c
 int id frag_detail 0x7f090010
 int id frag_facebook 0x7f09000e
 int id frag_list 0x7f09000f
@@ -176,12 +176,11 @@ int id icon 0x7f090037
 int id inline 0x7f090007
 int id large 0x7f090000
 int id left 0x7f09000a
-int id linearLayout1 0x7f09003c
+int id linearLayout1 0x7f09003b
 int id my_name 0x7f090038
 int id my_status 0x7f090039
 int id normal 0x7f090001
 int id picker_subtitle 0x7f090020
-int id queryButton 0x7f09003b
 int id right 0x7f09000b
 int id small 0x7f090002
 int id standard 0x7f090005
@@ -245,7 +244,6 @@ int string com_facebook_usersettingsfragment_log_in_button 0x7f06000a
 int string com_facebook_usersettingsfragment_logged_in 0x7f06000b
 int string com_facebook_usersettingsfragment_not_logged_in 0x7f06000c
 int string connect_peer_button 0x7f060025
-int string create_group 0x7f060022
 int string disconnect_peer_button 0x7f060026
 int string discover_peers_button 0x7f060024
 int string empty 0x7f060029
@@ -254,6 +252,7 @@ int string enable_p2p_button 0x7f060023
 int string get_file_button 0x7f060027
 int string group_owner_text 0x7f06002f
 int string hello_world 0x7f06001f
+int string initialize_manet 0x7f060022
 int string label_me 0x7f060030
 int string label_peers 0x7f060031
 int string no 0x7f06002b

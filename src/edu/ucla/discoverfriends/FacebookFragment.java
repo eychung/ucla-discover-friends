@@ -25,7 +25,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 
 import com.facebook.HttpMethod;
 import com.facebook.Request;
@@ -43,47 +42,42 @@ import com.google.common.hash.PrimitiveSink;
 
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
-import edu.ucla.discoverfriend.R;
 import edu.ucla.encryption.AES;
 
 public class FacebookFragment extends Fragment {
 
 	private static final String TAG = "FacebookFragment";
 	private String uid = "";
-	
+
 	private static final int EXPECTED_INSERTIONS = 1000;
 	private static final double FALSE_POSITIVE_PROBABILITY = 0.02;
 
 	private UiLifecycleHelper uiHelper;
 
-	private Button queryButton;
-	OnQueryClickListener mListener;
-	
-	private String[] friendId;
+	FacebookFragmentListener mListener;
+
+	private String[] friendsId;
 
 	private View mContentView = null;
-	
+
 	public void setUid(String uid) {
 		this.uid = uid;
 	}
-	
+
 	public String getUid() {
 		return this.uid;
 	}
-	
-	public String[] getFriendId() {
-		return friendId;
+
+	public String[] getFriendsId() {
+		return friendsId;
 	}
 
-	public void setFriendId(String[] friendId) {
-		this.friendId = friendId;
+	public void setFriendsId(String[] friendsId) {
+		this.friendsId = friendsId;
 	}
 
 
 	class StringFunnel implements Funnel<String> {
-		/**
-		 * 
-		 */
 		private static final long serialVersionUID = 1L;
 
 		@Override
@@ -94,99 +88,11 @@ public class FacebookFragment extends Fragment {
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-		mContentView = inflater.inflate(R.layout.facebook, null);
+		mContentView = inflater.inflate(R.layout.facebook, container);
 
 		// To allow the fragment to receive the onActivityResult()
 		LoginButton authButton = (LoginButton) mContentView.findViewById(R.id.authButton);
 		//authButton.setFragment(this);
-
-		queryButton = (Button) mContentView.findViewById(R.id.queryButton);
-
-		queryButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				Session session = Session.getActiveSession();
-				Request request = new Request(session, "/me/friends", null, HttpMethod.GET, new Request.Callback() {
-					public void onCompleted(Response response) {
-						try {
-							GraphObject graphObject = response.getGraphObject();
-							if (graphObject != null) 
-							{
-								JSONObject data = graphObject.getInnerJSONObject();
-								JSONArray friendsData = data.getJSONArray("data");
-								String ids[] = new String[friendsData.length()];
-								String names[] = new String[friendsData.length()];
-
-								Log.d(TAG, "" + friendsData.length());
-
-								// EXPECTED_INSERTIONS and FALSE_POSITIVE_PROBABILITY are used to calculate
-								// optimalNumOfBits and consequently, numHashFunctions. Guava uses built-in
-								// BloomFilterStrategies.MURMUR128_MITZ_32 as hashing function.
-								BloomFilter<String> bf = BloomFilter.create(new StringFunnel(), 
-										EXPECTED_INSERTIONS, FALSE_POSITIVE_PROBABILITY);
-
-								for(int i = 0; i < friendsData.length(); i++){ 
-									ids[i] = friendsData.getJSONObject(i).getString("uid");
-									names[i] = friendsData.getJSONObject(i).getString("name");
-									bf.put(Utils.hash(ids[i]));
-								}
-								
-								friendId = ids;
-
-								BloomFilter<String> bfp = bf.copy();
-								bfp.put(Utils.hash(getUid()));
-								
-								FileInputStream is = new FileInputStream(getActivity().getFilesDir().getAbsolutePath() +
-										Constants.KEYSTORE_NAME);
-							    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-							    keystore.load(is, "password".toCharArray());
-							    is.close();
-							    X509Certificate crt = (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
-							    
-							    // Encrypt certificate with AES, using hash of initiator's ID as hash.
-							    ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
-								ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-								outputStream.writeObject(crt);
-								outputStream.flush();
-								byte[] cf = byteStream.toByteArray();
-								byte[] key = Utils.hash(getUid()).getBytes(Charset.forName("UTF-8"));
-								byte[] ecf = AES.encrypt(key, cf);
-							    
-								mListener.onQueryClick(bf, bfp, ecf);
-
-							}
-
-						} catch (FacebookError e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (JSONException e) {
-							Log.e(TAG, "JSON parsing error: " + e.getMessage());
-						} catch (KeyStoreException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (FileNotFoundException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (NoSuchAlgorithmException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (CertificateException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (Exception e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-
-						Log.i(TAG, "Result: " + response.toString());
-					}                  
-				}); 
-				Request.executeBatchAsync(request);
-			}
-		});
 
 		return mContentView;
 	}
@@ -194,10 +100,8 @@ public class FacebookFragment extends Fragment {
 	private void onSessionStateChange(Session session, SessionState state, Exception exception) {
 		if (state.isOpened()) {
 			Log.i(TAG, "Logged in...");
-			queryButton.setVisibility(View.VISIBLE);
 		} else if (state.isClosed()) {
 			Log.i(TAG, "Logged out...");
-			queryButton.setVisibility(View.INVISIBLE);
 		}
 	}
 
@@ -253,20 +157,71 @@ public class FacebookFragment extends Fragment {
 		super.onSaveInstanceState(outState);
 		uiHelper.onSaveInstanceState(outState);
 	}
+	
+	public void createSnp() {
+		Session session = Session.getActiveSession();
+		Request request = new Request(session, "/me/friends", null, HttpMethod.GET, new Request.Callback() {
+			public void onCompleted(Response response) {
+				try {
+					GraphObject graphObject = response.getGraphObject();
+					if (graphObject != null) 
+					{
+						JSONObject data = graphObject.getInnerJSONObject();
+						JSONArray friendsData = data.getJSONArray("data");
+						String ids[] = new String[friendsData.length()];
+						String names[] = new String[friendsData.length()];
 
-	public interface OnQueryClickListener {
-		public void onQueryClick(BloomFilter<String> bf, BloomFilter<String> bfp, byte[] ec);
+						Log.d(TAG, "" + friendsData.length());
+
+						// EXPECTED_INSERTIONS and FALSE_POSITIVE_PROBABILITY are used to calculate
+						// optimalNumOfBits and consequently, numHashFunctions. Guava uses built-in
+						// BloomFilterStrategies.MURMUR128_MITZ_32 as hashing function.
+						BloomFilter<String> bf = BloomFilter.create(new StringFunnel(), 
+								EXPECTED_INSERTIONS, FALSE_POSITIVE_PROBABILITY);
+
+						for(int i = 0; i < friendsData.length(); i++){ 
+							ids[i] = friendsData.getJSONObject(i).getString("uid");
+							names[i] = friendsData.getJSONObject(i).getString("name");
+							bf.put(Utils.hash(ids[i]));
+						}
+
+						friendsId = ids;
+
+						BloomFilter<String> bfp = bf.copy();
+						bfp.put(Utils.hash(getUid()));
+
+						mListener.saveBfPair(bf, bfp);
+						Log.i(TAG, "Successfully generated bf, bfp, and ecf.");
+					}
+				} catch (FacebookError e) {
+					Log.e(TAG, e.getMessage());
+				} catch (JSONException e) {
+					Log.e(TAG, "JSON parsing error: " + e.getMessage());
+				} catch (NoSuchAlgorithmException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (Exception e) {
+					Log.e(TAG, e.getMessage());
+				}
+
+				Log.i(TAG, "Result: " + response.toString());
+			}                  
+		}); 
+		Request.executeBatchAsync(request);
+	}
+
+	public interface FacebookFragmentListener {
+		public void saveBfPair(BloomFilter<String> bf, BloomFilter<String> bfp);
 	}
 
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
 		try {
-			mListener = (OnQueryClickListener) activity;
+			mListener = (FacebookFragmentListener) activity;
 		} catch (ClassCastException e) {
-			throw new ClassCastException(activity.toString() + " must implement OnQueryClickListener");
+			throw new ClassCastException(activity.toString() + " must implement " + FacebookFragmentListener.class.getName());
 		}
-		
+
 	}
 
 }

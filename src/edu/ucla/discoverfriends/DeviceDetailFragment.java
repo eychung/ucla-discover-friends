@@ -21,6 +21,10 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 
 import android.app.Fragment;
 import android.app.ProgressDialog;
@@ -45,7 +49,7 @@ import android.widget.TextView;
 import com.google.common.hash.BloomFilter;
 
 import edu.ucla.common.Constants;
-import edu.ucla.discoverfriend.R;
+import edu.ucla.discoverfriends.R;
 import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
 
 /**
@@ -53,6 +57,8 @@ import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
  * i.e. setting up network connection and transferring data.
  */
 public class DeviceDetailFragment extends Fragment implements ConnectionInfoListener, GroupInfoListener {
+	
+	private static final String TAG = "DeviceDetailFragment";
 
 	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 	private static final int SOCKET_TIMEOUT = 5000;
@@ -71,7 +77,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-		mContentView = inflater.inflate(R.layout.device_detail, null);
+		mContentView = inflater.inflate(R.layout.device_detail, container);
 		mContentView.findViewById(R.id.btn_connect).setOnClickListener(new View.OnClickListener() {
 
 			@Override
@@ -121,7 +127,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 						
 						Intent serviceIntent = new Intent(getActivity(), DataTransferService.class);
 						Bundle extras = new Bundle();
-						extras.putSerializable(DataTransferService.EXTRAS_SNP, ((MainActivity) getActivity()).getCnp());
+						extras.putSerializable(DataTransferService.EXTRAS_SNP, ((MainActivity) getActivity()).getSnp());
 						extras.putString(Constants.USER_LABEL, Constants.USER_INITIATOR);
 						serviceIntent.setAction(DataTransferService.NETWORK_INITIATOR_SETUP);
 						serviceIntent.putExtras(extras);
@@ -139,7 +145,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 							// exhaustively trying all entries in their friends
 							// list.
 							FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-							String ids[] = fragment.getFriendId();
+							String ids[] = fragment.getFriendsId();
 							BloomFilter<String> bf = receivedCNP.getBf();
 							BloomFilter<String> bfp = receivedCNP.getBfp();
 							for (int i=0; i<ids.length; i++) {
@@ -193,7 +199,18 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		}
 		else if (info.groupFormed) {
 			FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-			new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, info.groupOwnerAddress.getHostAddress(), fragment.getUid(), receivedCNP).execute();
+			try {
+				new DataReceiver.TargetSetupTask().execute(((MainActivity)getActivity()).getOwnCertificate(), fragment.getUid(), fragment.getFriendsId());
+			} catch (CertificateException e) {
+				Log.e(TAG, e.getMessage());
+			} catch (KeyStoreException e) {
+				Log.e(TAG, e.getMessage());
+			} catch (NoSuchAlgorithmException e) {
+				Log.e(TAG, e.getMessage());
+			} catch (IOException e) {
+				Log.e(TAG, e.getMessage());
+			}
+			//new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, info.groupOwnerAddress.getHostAddress(), fragment.getUid(), receivedCNP).execute();
 		}
 
 		// Hide the connect button.

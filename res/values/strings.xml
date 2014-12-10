@@ -6,7 +6,7 @@
     <string name="hello_world">Hello world!</string>
     <string name="app_id">494136867363585</string>
     <string name="query">Query</string>
-    <string name="create_group">Create Group</string>
+    <string name="initialize_manet">Initialize MANET</string>
     
     <string name="enable_p2p_button">P2P On/Off</string>
     <string name="discover_peers_button">Discover</string>

@@ -10,6 +10,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
+import java.security.PublicKey;
 
 import android.app.IntentService;
 import android.content.Intent;
@@ -19,6 +20,7 @@ import android.util.Log;
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
 import edu.ucla.encryption.AES;
+import edu.ucla.encryption.PKE;
 
 /**
  * A service that process each data transfer request i.e Intent by opening a
@@ -35,13 +37,13 @@ public class DataTransferService extends IntentService {
 
 	// Object extras
 	public static final String EXTRAS_CERTIFICATE = "certificate";
+	public static final String EXTRAS_PUBLIC_KEY = "public_key";
 	public static final String EXTRAS_SNP = "snp";
 	
 	// Primitive extras
 	public static final String EXTRAS_MESSAGE = "message";
 	
 	// Byte-encoded extras
-	public static final String EXTRAS_PUBLIC_KEY_ENCODED = "public_key_encoded";
 	public static final String EXTRAS_SYMMETRIC_KEY_ENCODED = "symmetric_key_encoded";
 	
 	public static final String EXTRAS_DEVICE_ADDRESS = "go_client";
@@ -146,8 +148,8 @@ public class DataTransferService extends IntentService {
 				byte[] symmetricKey = AES.getRandomKey();
 				
 				// Encrypt symmetric key with public key.
-				byte[] publicKey = intent.getByteArrayExtra(EXTRAS_PUBLIC_KEY_ENCODED);
-				byte[] encryptedKey = AES.encrypt(publicKey, symmetricKey);
+				PublicKey publicKey = (PublicKey) intent.getSerializableExtra(EXTRAS_PUBLIC_KEY);
+				byte[] encryptedKey = PKE.encrypt(publicKey, symmetricKey);
 
 				int byteCount = encryptedKey.length;
 				byte[] payloadSize = new byte[4];
