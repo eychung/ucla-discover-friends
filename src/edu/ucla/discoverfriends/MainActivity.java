@@ -1,48 +1,24 @@
 package edu.ucla.discoverfriends;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.List;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.pm.Signature;
-import android.net.wifi.WpsInfo;
-import android.net.wifi.p2p.WifiP2pConfig;
-import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.WifiP2pManager.ActionListener;
-import android.net.wifi.p2p.WifiP2pManager.Channel;
-import android.net.wifi.p2p.WifiP2pManager.ChannelListener;
 import android.os.Bundle;
-import android.provider.Settings;
-import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.facebook.Request;
 import com.facebook.Response;
@@ -52,106 +28,108 @@ import com.facebook.model.GraphUser;
 import com.google.common.hash.BloomFilter;
 
 import edu.ucla.common.Constants;
-import edu.ucla.common.Utils;
-import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
 import edu.ucla.discoverfriends.FacebookFragment.FacebookFragmentListener;
-import edu.ucla.encryption.AES;
+import edu.ucla.discoverfriends.InitiatorActivity.StringFunnel;
 import edu.ucla.encryption.KeyRepository;
 
 /**
+ * MainActivity is the home screen activity, allowing users to choose between
+ * Initiator and Target role.
  * 
- * @author 530un
- * https://code.google.com/p/boxeeremote/wiki/AndroidUDP
- * https://code.google.com/p/boxeeremote/source/browse/trunk/Boxee+Remote/src/com/andrewchatham/Discoverer.java?spec=svn28&r=28
- * http://stackoverflow.com/questions/11089232/udp-packets-via-wifi-direct-never-arrive
- * http://stackoverflow.com/questions/3997459/send-and-receive-serialize-object-on-udp
- * http://michieldemey.be/blog/network-discovery-using-udp-broadcast/
- * http://www.javaworld.com/article/2077539/learn-java/java-tip-40--object-transport-via-datagram-packets.html
- * http://docs.oracle.com/javase/tutorial/networking/datagrams/clientServer.html
+ * Connects to Facebook to retrieve user ID and list of friends' IDs. Also,
+ * creates a keystore with self-signed certificate.
+ * 
+ * Sends intent with (String userId, String[] friendsId, X509Certificate crt). 
  */
-public class MainActivity extends Activity implements ChannelListener, DeviceActionListener, FacebookFragmentListener {
+public class MainActivity extends Activity implements FacebookFragmentListener {
 
 	public static final String TAG = "MainActivity";
 
-	private TextView textView1;
-
-	private WifiP2pManager manager;
-	private boolean isWifiP2pEnabled = false;
-	private boolean retryChannel = false;
-
-	private final IntentFilter intentFilter = new IntentFilter();
-	private Channel channel;
-	private BroadcastReceiver receiver = null;
-
+	// UI
+	@SuppressWarnings("unused")
+	private TextView textDebug;
+	private Button buttonInitiator, buttonTarget;
 	ProgressDialog progressDialog = null;
 
-	SetupNetworkPacket snp = null;
+	// Intent contents to pass to next activity
+	String userId = "";
+	String[] friendsId = null;
+	X509Certificate crt = null;
 
-	public WifiP2pManager getManager() {
-		return manager;
+
+	public String getUserId() {
+		return userId;
 	}
 
-	public Channel getChannel() {
-		return channel;
+	public void setUserId(String userId) {
+		this.userId = userId;
 	}
 
-	public SetupNetworkPacket getSnp() {
-		return snp;
+	public String[] getFriendsId() {
+		return friendsId;
 	}
 
-	/**
-	 * @param isWifiP2pEnabled the isWifiP2pEnabled to set
-	 */
-	public void setIsWifiP2pEnabled(boolean isWifiP2pEnabled) {
-		this.isWifiP2pEnabled = isWifiP2pEnabled;
+	public void setFriendsId(String[] friendsId) {
+		this.friendsId = friendsId;
+	}
+
+	public X509Certificate getCrt() {
+		return crt;
+	}
+
+	public void setCrt(X509Certificate crt) {
+		this.crt = crt;
 	}
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
+		setContentView(R.layout.home);
 
-		//  Indicates a change in the Wi-Fi P2P status.
-		intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+		textDebug = (TextView) findViewById(R.id.txt_debug);
+		buttonInitiator = (Button) findViewById(R.id.btn_initiator);
+		buttonTarget = (Button) findViewById(R.id.btn_target);
+		
+		buttonInitiator.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Intent intent = new Intent(MainActivity.this, InitiatorActivity.class);
+				intent.putExtra(Constants.EXTRAS_USER_ID, getUserId());
+				intent.putExtra(Constants.EXTRAS_FRIENDS_ID, getFriendsId());
+				intent.putExtra(Constants.EXTRAS_CERTIFICATE, getCrt());
+				startActivity(intent);
+			}
+		});
+		
+		buttonTarget.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Intent intent = new Intent(MainActivity.this, TargetActivity.class);
+				intent.putExtra(Constants.EXTRAS_USER_ID, getUserId());
+				intent.putExtra(Constants.EXTRAS_FRIENDS_ID, getFriendsId());
+				intent.putExtra(Constants.EXTRAS_CERTIFICATE, getCrt());
+				startActivity(intent);
+			}
+		});
 
-		// Indicates a change in the list of available peers.
-		intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-
-		// Indicates a change in the state of Wi-Fi P2P connectivity.
-		intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-
-		// Indicates a change in this device's details.
-		intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-
-		manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
-		channel = manager.initialize(this, getMainLooper(), null);
-		receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
-
-		textView1 = (TextView) findViewById(R.id.textView1);
-
+		// Open Facebook session and retrieves user's list of friends' IDs.
 		Session.openActiveSession(this, true, new Session.StatusCallback() {
-
-			// callback when session changes state
 			@Override
 			public void call(Session session, SessionState state, Exception exception) {
 				if (session.isOpened()) {
-
-					// make request to the /me API
 					Request.newMeRequest(session, new Request.GraphUserCallback() {
-
-						// callback after Graph API response with user object
 						@Override
 						public void onCompleted(GraphUser user, Response response) {
 							if (user != null) {
-								textView1.setText(user.getId());
+								// Sets Facebook user's ID.
+								setUserId(user.getId());
+								Log.d(TAG, "User ID set as " + getUserId());
+
+								// Sets list of Facebook friends' IDs using FacebookFragmentListener.
 								FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-
 								if (fragment != null) {
-									fragment.setUid(user.getId());
-									fragment.createSnp();
-									Log.i(TAG, "User ID set as " + user.getId());
+									fragment.getFriendsId();
 								}
-
 							}
 						}
 					}).executeAsync();
@@ -159,83 +137,27 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 			}
 		});
 
-		findViewById(R.id.btn_create_group).setOnClickListener(new View.OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-
-				createGroup();
-				textView1.setText("Created group owner as me.");
-
-				DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
-				List<WifiP2pDevice> peers = fragmentDetails.getPeers();
-
-				// TODO: Multithread connections for multiple connected devices.
-				// TODO: Should be done as an async task... or at least show when a client is connected.
-				if (!peers.isEmpty()) {
-					WifiP2pConfig config;
-
-					for (int i=0; i<peers.size(); i++) {
-						config = new WifiP2pConfig();
-						config.deviceAddress = peers.get(i).deviceAddress;
-						config.wps.setup = WpsInfo.PBC;
-						connect(config);
-
-					}
-
-					Intent serviceIntent = new Intent(MainActivity.this, DataTransferService.class);
-					Bundle extras = new Bundle();
-					extras.putSerializable(DataTransferService.EXTRAS_SNP, getSnp());
-					serviceIntent.setAction(DataTransferService.NETWORK_INITIATOR_SETUP);
-					serviceIntent.putExtras(extras);
-					startService(serviceIntent);
-				}
-				else {
-					textView1.setText("Peer list is empty so no connections established.");
-				}
-
-			}
-		});
-
-		Log.i(TAG, "Checking shared preferences.");
-		//SharedPreferences prefs = this.getSharedPreferences(TAG, Context.MODE_PRIVATE);
-		//if (!prefs.getBoolean("firstTime", false)) {
-		Log.i(TAG, "Attempting to create local keystore.");
-
+		// Create keystore file and save it into device's internal storage.
 		try {
 			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath());
 			Log.i(TAG, "Created local keystore.");
 		} catch (GeneralSecurityException e) {
 			Log.e(TAG, e.getMessage());
 		} catch (IOException e) {
-			Log.e(TAG, "File write failed: " + e.toString());
+			Log.e(TAG, e.getMessage());
 		}
-
-		// mark first time has runned.
-		//SharedPreferences.Editor editor = prefs.edit();
-		//editor.putBoolean("firstTime", true);
-		//editor.commit();
-		//}
 
 		try {
-			PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(),
-					PackageManager.GET_SIGNATURES);
-			for (Signature signature : packageInfo.signatures) {
-				MessageDigest md = MessageDigest.getInstance("SHA");
-				md.update(signature.toByteArray());
-				Log.d("KeyHash:", Base64.encodeToString(md.digest(), Base64.DEFAULT));
-			}
+			this.setCrt(this.getOwnCertificate());
+		} catch (CertificateException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (IOException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (KeyStoreException e) {
+			Log.e(TAG, e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			Log.e(TAG, e.getMessage());
 		}
-		catch (NameNotFoundException e1) {
-			Log.e("Name not found", e1.toString());
-		}
-		catch (NoSuchAlgorithmException e) {
-			Log.e("No such an algorithm", e.toString());
-		}
-		catch (Exception e){
-			Log.e("Exception", e.toString());
-		}
-
 	}
 
 	@Override
@@ -246,22 +168,19 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.action_items, menu);
+		inflater.inflate(R.menu.home, menu);
 		return true;
 	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
-		registerReceiver(receiver, intentFilter);
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		unregisterReceiver(receiver);
 	}
 
 	@Override
@@ -269,227 +188,18 @@ public class MainActivity extends Activity implements ChannelListener, DeviceAct
 		super.onDestroy();
 	}
 
-	/**
-	 * Remove all peers and clear all fields. This is called on
-	 * BroadcastReceiver receiving a state change event.
-	 */
-	public void resetData() {
-		DeviceListFragment fragmentList = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
-		DeviceDetailFragment fragmentDetails = (DeviceDetailFragment) getFragmentManager().findFragmentById(R.id.frag_detail);
-		if (fragmentList != null) {
-			fragmentList.clearPeers();
-		}
-		if (fragmentDetails != null) {
-			fragmentDetails.resetViews();
-		}
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * @see android.app.Activity#onOptionsItemSelected(android.view.MenuItem)
-	 */
 	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-		case R.id.atn_direct_enable:
-			if (manager != null && channel != null) {
-
-				// Since this is the system wireless settings activity, it's
-				// not going to send us a result. We will be notified by
-				// WiFiDeviceBroadcastReceiver instead.
-
-				startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
-			} else {
-				Log.e(TAG, "channel or manager is null");
-			}
-			return true;
-
-		case R.id.atn_direct_discover:
-			if (!isWifiP2pEnabled) {
-				Toast.makeText(MainActivity.this, R.string.p2p_off_warning, Toast.LENGTH_SHORT).show();
-				return true;
-			}
-
-			final DeviceListFragment fragment = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
-			fragment.onInitiateDiscovery();
-
-			manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
-
-				@Override
-				public void onSuccess() {
-					Toast.makeText(MainActivity.this, "Discovery Initiated", Toast.LENGTH_SHORT).show();
-				}
-
-				@Override
-				public void onFailure(int reasonCode) {
-					Toast.makeText(MainActivity.this, "Discovery Failed : " + reasonCode, Toast.LENGTH_SHORT).show();
-				}
-			});
-			return true;
-		default:
-			return super.onOptionsItemSelected(item);
-		}
+	public void saveFriendsId(String[] friendsId) {
+		this.setFriendsId(friendsId);
 	}
 
-	@Override
-	public void showDetails(WifiP2pDevice device) {
-		DeviceDetailFragment fragment = (DeviceDetailFragment) getFragmentManager().findFragmentById(R.id.frag_detail);
-		fragment.showDetails(device);
-	}
-
-	/**
-	 * Calls WifiP2pManager to connect to a single device (WifiP2pConfig) on a
-	 * given channel.
-	 */
-	@Override
-	public void connect(WifiP2pConfig config) {
-		manager.connect(channel, config, new ActionListener() {
-
-			@Override
-			public void onSuccess() {
-				// WiFiDirectBroadcastReceiver will notify us. Ignore for now.
-				// Want to listen and increment total counts of successful connections.
-			}
-
-			@Override
-			public void onFailure(int reason) {
-				Toast.makeText(MainActivity.this, "Connect failed. Retry.",
-						Toast.LENGTH_SHORT).show();
-			}
-		});
-	}
-
-	/**
-	 * Calls WifiP2pManager to create a group.
-	 */
-	@Override
-	public void createGroup() {
-		manager.createGroup(channel, new ActionListener() {
-
-			@Override
-			public void onSuccess() {
-				// WiFiDirectBroadcastReceiver will notify us. Ignore for now.
-			}
-
-			@Override
-			public void onFailure(int reason) {
-				Toast.makeText(MainActivity.this, "Create group failed. Retry.",
-						Toast.LENGTH_SHORT).show();
-			}
-		});
-	}
-
-	@Override
-	public void disconnect() {
-		final DeviceDetailFragment fragment = (DeviceDetailFragment) getFragmentManager().findFragmentById(R.id.frag_detail);
-		fragment.resetViews();
-		manager.removeGroup(channel, new ActionListener() {
-
-			@Override
-			public void onFailure(int reasonCode) {
-				Log.d(TAG, "Disconnect failed. Reason :" + reasonCode);
-
-			}
-
-			@Override
-			public void onSuccess() {
-				fragment.getView().setVisibility(View.GONE);
-			}
-
-		});
-	}
-
-	@Override
-	public void onChannelDisconnected() {
-		// we will try once more
-		if (manager != null && !retryChannel) {
-			Toast.makeText(this, "Channel lost. Trying again", Toast.LENGTH_LONG).show();
-			resetData();
-			retryChannel = true;
-			manager.initialize(this, getMainLooper(), this);
-		} else {
-			Toast.makeText(this,
-					"Severe! Channel is probably lost premanently. Try Disable/Re-Enable P2P.", Toast.LENGTH_LONG).show();
-		}
-	}
-
-	@Override
-	public void cancelDisconnect() {
-
-		/*
-		 * A cancel abort request by user. Disconnect i.e. removeGroup if
-		 * already connected. Else, request WifiP2pManager to abort the ongoing
-		 * request
-		 */
-		if (manager != null) {
-			final DeviceListFragment fragment = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
-			if (fragment.getDevice() == null
-					|| fragment.getDevice().status == WifiP2pDevice.CONNECTED) {
-				disconnect();
-			} else if (fragment.getDevice().status == WifiP2pDevice.AVAILABLE
-					|| fragment.getDevice().status == WifiP2pDevice.INVITED) {
-
-				manager.cancelConnect(channel, new ActionListener() {
-
-					@Override
-					public void onSuccess() {
-						Toast.makeText(MainActivity.this, "Aborting connection",
-								Toast.LENGTH_SHORT).show();
-					}
-
-					@Override
-					public void onFailure(int reasonCode) {
-						Toast.makeText(MainActivity.this,
-								"Connect abort request failed. Reason Code: " + reasonCode,
-								Toast.LENGTH_SHORT).show();
-					}
-				});
-			}
-		}
-
-	}
-
-	@Override
-	public void saveBfPair(BloomFilter<String> bf, BloomFilter<String> bfp) {
-		byte[] ecf;
-		try {
-			ecf = encryptCertificate(getOwnCertificate());
-			this.snp = new SetupNetworkPacket(bf, bfp, ecf);
-			textView1.setText("Bloom Filters generated from query.");
-		} catch (CertificateException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (KeyStoreException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (NoSuchAlgorithmException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (Exception e) {
-			Log.e(TAG, e.getMessage());
-		}
-	}
-
-	public X509Certificate getOwnCertificate() throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException {
+	private X509Certificate getOwnCertificate() throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException {
 		FileInputStream is = new FileInputStream(getFilesDir().getAbsolutePath() +
 				Constants.KEYSTORE_NAME);
 		KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 		keystore.load(is, "password".toCharArray());
 		is.close();
 		return (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
-	}
-
-	public byte[] encryptCertificate(X509Certificate crt) throws Exception {
-		FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-
-		// Encrypt certificate with AES, using hash of initiator's ID as hash.
-		ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
-		ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-		outputStream.writeObject(crt);
-		outputStream.flush();
-		byte[] cf = byteStream.toByteArray();
-		byte[] key = Utils.hash(fragment.getUid()).getBytes(Charset.forName("UTF-8"));
-		byte[] ecf = AES.encrypt(key, cf);
-		return ecf;
 	}
 
 }

@@ -3,14 +3,14 @@
     package="edu.ucla.discoverfriends"
     android:versionCode="1"
     android:versionName="1.0" >
-    
+
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />    
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />    
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -23,7 +23,8 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme" android:persistent="false">
+        android:persistent="false"
+        android:theme="@style/AppTheme" >
         <activity
             android:name="edu.ucla.discoverfriends.MainActivity"
             android:label="@string/app_name" >
@@ -33,8 +34,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <meta-data android:value="@string/app_id" android:name="com.facebook.sdk.ApplicationId"/>
-        <activity android:name="com.facebook.LoginActivity"></activity>
+
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/app_id" />
+
+        <activity android:name="com.facebook.LoginActivity" >
+        </activity>
+        <activity android:name="edu.ucla.discoverfriends.InitiatorActivity" >
+        </activity>
+        <activity android:name="edu.ucla.discoverfriends.TargetActivity" >
+        </activity>
+
+        <service android:name="edu.ucla.discoverfriends.DataReceiverService" />
+        <service android:name="edu.ucla.discoverfriends.DataTransferService" />
     </application>
 
 </manifest>

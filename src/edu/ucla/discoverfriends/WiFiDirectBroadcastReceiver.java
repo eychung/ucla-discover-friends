@@ -16,7 +16,6 @@
 
 package edu.ucla.discoverfriends;
 
-import edu.ucla.discoverfriends.R;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -36,7 +35,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 	
     private WifiP2pManager manager;
     private Channel channel;
-    private MainActivity activity;
+    private InitiatorActivity activity;
 
     /**
      * @param manager WifiP2pManager system service
@@ -44,7 +43,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
      * @param activity activity associated with the receiver
      */
     public WiFiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel,
-            MainActivity activity) {
+    		InitiatorActivity activity) {
         super();
         this.manager = manager;
         this.channel = channel;

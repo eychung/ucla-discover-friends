@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <Button
+        android:id="@+id/btn_create_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/initialize_manet"
+        android:textStyle="bold"
+        android:visibility="visible" />
+
+    <fragment
+        android:id="@+id/frag_list"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/phone_list_height"
+        class="edu.ucla.discoverfriends.DeviceListFragment" >
+
+        <!-- Preview: layout=@layout/row_devices -->
+    </fragment>
+
+    <fragment
+        android:id="@+id/frag_detail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        class="edu.ucla.discoverfriends.DeviceDetailFragment" >
+
+        <!-- Preview: layout=@layout/device_detail -->
+    </fragment>
+
+</LinearLayout>

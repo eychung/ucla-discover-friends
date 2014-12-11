@@ -16,20 +16,8 @@
 
 package edu.ucla.discoverfriends;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-
 import android.app.Fragment;
 import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.Intent;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -37,19 +25,12 @@ import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener;
 import android.net.wifi.p2p.WifiP2pManager.GroupInfoListener;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-
-import com.google.common.hash.BloomFilter;
-
-import edu.ucla.common.Constants;
-import edu.ucla.discoverfriends.R;
 import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
 
 /**
@@ -105,73 +86,10 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			}
 		});
 
-		mContentView.findViewById(R.id.btn_disconnect).setOnClickListener(
-				new View.OnClickListener() {
-
-					@Override
-					public void onClick(View v) {
-						((DeviceActionListener) getActivity()).disconnect();
-					}
-				});
-
-		mContentView.findViewById(R.id.btn_start_server).setOnClickListener(
-				new View.OnClickListener() {
-
-					@Override
-					public void onClick(View v) {
-						// Server feature that prepares the CustomNetworkPacket
-						// intent to send to the client.
-						TextView statusText = (TextView) mContentView.findViewById(R.id.status_text);
-						statusText.setText("Sending (to device): CNP");
-						Log.d(MainActivity.TAG, "Intent----------- ");
-						
-						Intent serviceIntent = new Intent(getActivity(), DataTransferService.class);
-						Bundle extras = new Bundle();
-						extras.putSerializable(DataTransferService.EXTRAS_SNP, ((MainActivity) getActivity()).getSnp());
-						extras.putString(Constants.USER_LABEL, Constants.USER_INITIATOR);
-						serviceIntent.setAction(DataTransferService.NETWORK_INITIATOR_SETUP);
-						serviceIntent.putExtras(extras);
-						getActivity().startService(serviceIntent);
-					}
-				});
-		
-		mContentView.findViewById(R.id.btn_yes).setOnClickListener(
-				new View.OnClickListener() {
-
-					@Override
-					public void onClick(View v) {
-						if (receivedCNP != null) {
-							// Extract the initiator ID from BFc+ by
-							// exhaustively trying all entries in their friends
-							// list.
-							FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-							String ids[] = fragment.getFriendsId();
-							BloomFilter<String> bf = receivedCNP.getBf();
-							BloomFilter<String> bfp = receivedCNP.getBfp();
-							for (int i=0; i<ids.length; i++) {
-								if (bfp.mightContain(ids[i]) && !bf.mightContain(ids[i])) {
-									// The current friend is the initiator.
-								}
-							}
-						}
-					}
-				});
-		
-		mContentView.findViewById(R.id.btn_no).setOnClickListener(
-				new View.OnClickListener() {
-
-					@Override
-					public void onClick(View v) {
-						// Don't do anything and reset view.
-					}
-				});
-
 		return mContentView;
 	}
 
-	/**
-	 * Unused.
-	 */
+
 	@Override
 	public void onConnectionInfoAvailable(final WifiP2pInfo info) {
 		if (progressDialog != null && progressDialog.isShowing()) {
@@ -198,18 +116,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			((TextView) mContentView.findViewById(R.id.status_text)).setText(getResources().getString(R.string.server_text));
 		}
 		else if (info.groupFormed) {
-			FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-			try {
-				new DataReceiver.TargetSetupTask().execute(((MainActivity)getActivity()).getOwnCertificate(), fragment.getUid(), fragment.getFriendsId());
-			} catch (CertificateException e) {
-				Log.e(TAG, e.getMessage());
-			} catch (KeyStoreException e) {
-				Log.e(TAG, e.getMessage());
-			} catch (NoSuchAlgorithmException e) {
-				Log.e(TAG, e.getMessage());
-			} catch (IOException e) {
-				Log.e(TAG, e.getMessage());
-			}
+				new DataReceiverService.TargetSetupTask().execute(((MainActivity)getActivity()).getCrt(), 
+						((MainActivity)getActivity()).getUserId(), ((MainActivity)getActivity()).getFriendsId());
 			//new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, info.groupOwnerAddress.getHostAddress(), fragment.getUid(), receivedCNP).execute();
 		}
 
@@ -263,7 +171,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		else if (!group.isGroupOwner()) {
 			((TextView) mContentView.findViewById(R.id.status_text)).setText("Attempting to retreive packet for " + SOCKET_TIMEOUT + " ms");
 			FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-			new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, group.getOwner().deviceAddress, fragment.getUid(), receivedCNP).execute();
+			//new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, group.getOwner().deviceAddress, fragment.getUid(), receivedCNP).execute();
 		}
 		
 		else {
@@ -306,107 +214,5 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		mContentView.findViewById(R.id.btn_start_server).setVisibility(View.GONE);
 		this.getView().setVisibility(View.GONE);
 	}
-	
-	/**
-	 * A simple client socket that accepts connection and writes some data on
-	 * the stream.
-	 */
-	public static class ClientAsyncTask extends AsyncTask<Void, Void, SetupNetworkPacket> {
-		
-		private Context context;
-		private TextView statusText;
-		private String host;
-		private String uid;
-		private Button btn_yes;
-		private Button btn_no;
-		private SetupNetworkPacket receivedCNP;
-
-		/**
-		 * @param context
-		 * @param statusText
-		 */
-		public ClientAsyncTask(Context context, View statusText, Button btn_yes, Button btn_no, String host, String uid, SetupNetworkPacket receivedCNP) {
-			this.context = context;
-			this.statusText = (TextView) statusText;
-			this.host = host;
-			this.uid = uid;
-			this.btn_yes = btn_yes;
-			this.btn_no = btn_no;
-			this.receivedCNP = receivedCNP;
-		}
-
-		@Override
-		protected SetupNetworkPacket doInBackground(Void... params) {
-			Socket socket = new Socket();
-			int port = 8988;
-
-			try {
-				Log.d(MainActivity.TAG, "Opening client socket - ");
-				socket.bind(null);
-				socket.connect((new InetSocketAddress(host, port)), SOCKET_TIMEOUT);
-
-				Log.d(MainActivity.TAG, "Client socket - " + socket.isConnected());
-				
-				InputStream inputstream = socket.getInputStream();
-				ObjectInputStream ois = new ObjectInputStream(inputstream);
-				SetupNetworkPacket cnp = (SetupNetworkPacket) ois.readObject();
-
-				return cnp;
-			} catch (IOException e) {
-                Log.e(MainActivity.TAG, e.getMessage());
-                return null;
-            } catch (ClassNotFoundException e) {
-            	Log.e(MainActivity.TAG, e.getMessage());
-                return null;
-			} finally {
-                if (socket != null) {
-                    if (socket.isConnected()) {
-                        try {
-                            socket.close();
-                        } catch (IOException e) {
-                            // Give up
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * @see android.os.AsyncTask#onPostExecute(java.lang.Object)
-		 */
-		@Override
-		protected void onPostExecute(SetupNetworkPacket result) {
-			if (result != null) {
-				//statusText.setText(result.getCrt().toString());
-				
-				// Check if current user is social network friends with sender.
-				if (result.getBf().mightContain(uid)) {
-					receivedCNP = result;
-					
-					// Prompt user to act accordingly with a yes or no buttons
-					// to indicate whether or not to respond back.
-					btn_yes.setVisibility(View.VISIBLE);
-					btn_no.setVisibility(View.VISIBLE);
-				}
-				else {
-					// Ignore and don't respond.
-				}
-			}
-
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * @see android.os.AsyncTask#onPreExecute()
-		 */
-		@Override
-		protected void onPreExecute() {
-			statusText.setText("Opening a client socket");
-		}
-
-	}
-
 
 }

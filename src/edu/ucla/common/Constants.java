@@ -15,6 +15,30 @@ public class Constants {
 	public static final String USER_CERTIFICATE_ALIAS = "self";
 	public static final String KEYSTORE_NAME = "user.keystore";
 	
+	// Intent extras names
+	public static final String NETWORK_INITIATOR_SETUP = "edu.ucla.discoverfriends.NETWORK_INITIATOR_SETUP";
+	public static final String NETWORK_TARGET_SEND_CERTIFICATE = "edu.ucla.discoverfriends.NETWORK_TARGET_SEND_CERTIFICATE";
+	public static final String NETWORK_INITIATOR_MESSAGE_AND_KEY = "edu.ucla.discoverfriends.NETWORK_INITIATOR_MESSAGE_AND_KEY";
+	public static final String NETWORK_TARGET_MESSAGE = "edu.ucla.discoverfriends.NETWORK_INITIATOR_MESSAGE";
+	public static final String NETWORK_INITIATOR_GET_CERTIFICATE = "network_initiator_get_certificate";
+	public static final String NETWORK_INITIATOR_MESSAGE_LISTENER = "network_initiator_message_listener";
+	public static final String NETWORK_TARGET_MESSAGE_LISTENER = "network_target_message_listener";
+	public static final String TEST = "test";
+	
 	// Intent extras strings
-	public static final String EXTRA_HOST = "host";
+	public static final String EXTRAS_CERTIFICATE = "certificate"; // X509Certificate
+	public static final String EXTRAS_ENCRYPTED_CERTIFICATE = "encrypted_certificate"; // byte[]
+	public static final String EXTRAS_ENCRYPTED_MESSAGE = "encrypted_message"; // byte[]
+	public static final String EXTRAS_FRIENDS_ID = "friends_id"; // String[]
+	public static final String EXTRAS_MESSAGE = "message"; // String
+	public static final String EXTRAS_PUBLIC_KEY = "public_key"; // PublicKey
+	public static final String EXTRAS_SNP = "snp"; // SetupNetworkPacket
+	public static final String EXTRAS_SYMMETRIC_KEY_ENCODED = "symmetric_key_encoded"; // byte[]
+	public static final String EXTRAS_USER_ID = "user_id"; // String
+	
+	public static final String EXTRAS_HOST = "host";
+	
+	public static final String EXTRAS_DEVICE_ADDRESS = "go_client";
+	public static final String EXTRAS_GROUP_OWNER_PORT = "go_port";
+	
 }

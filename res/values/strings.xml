@@ -3,9 +3,11 @@
 
     <string name="app_name">DiscoverFriend</string>
     <string name="action_settings">Settings</string>
-    <string name="hello_world">Hello world!</string>
     <string name="app_id">494136867363585</string>
-    <string name="query">Query</string>
+    
+    <string name="initiator">Initiator</string>
+    <string name="target">Target</string>
+    
     <string name="initialize_manet">Initialize MANET</string>
     
     <string name="enable_p2p_button">P2P On/Off</string>
