@@ -16,24 +16,11 @@ import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
 
 public class KeyRepository {
-	public static void createUserKeyStore(String path) throws GeneralSecurityException, IOException {
-		KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-		keyPairGenerator.initialize(1024);
-		KeyPair keyPair = keyPairGenerator.genKeyPair();
-
-		// Create certificate
-		String dn = "cn=Eric Chung, o=UCLA, c=US";
-		int days = 1;
-		String algorithm = "MD5WithRSA";
-		X509Certificate crt = Certificate.generateCertificate(dn, keyPair, days, algorithm);
-
-		// Store away the keystore
-		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		char[] password = "password".toCharArray();
-		ks.load(null, password);
-		ks.setCertificateEntry(Constants.USER_CERTIFICATE_ALIAS, crt);
-		FileOutputStream fos = new FileOutputStream(path + "user.keystore");
-		ks.store(fos, password);
+	public static void createUserKeyStore(String path, String password) throws GeneralSecurityException, IOException {
+		KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+		keystore.load(null, password.toCharArray());
+		FileOutputStream fos = new FileOutputStream(path + Constants.KEYSTORE_NAME);
+		keystore.store(fos, password.toCharArray());
 		fos.close();
 	}
 
@@ -46,35 +33,62 @@ public class KeyRepository {
 		int days = 1;
 		String algorithm = "MD5WithRSA";
 
-		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 		char[] password = "password".toCharArray();
-		ks.load(null, password);
+		keystore.load(null, password);
 		for (int i = 0; i < num; i++) {
 			keyPairGenerator = KeyPairGenerator.getInstance("RSA");
 			keyPairGenerator.initialize(1024);
 			keyPair = keyPairGenerator.genKeyPair();
-			alias = Utils.getRandomName(10);
+			alias = Utils.getRandomAlias(10);
 			dn = Utils.customDName(alias);
 			crt = Certificate.generateCertificate(dn, keyPair, days, algorithm);
-			ks.setCertificateEntry(alias, crt);
+			keystore.setCertificateEntry(alias, crt);
 		}
 		FileOutputStream fos = new FileOutputStream(num + "users.keystore");
-		ks.store(fos, password);
+		keystore.store(fos, password);
 		fos.close();
 	}
+	
+	public static KeyStore getKeyStore(String path) throws IOException, KeyStoreException {
+		FileInputStream fis = new FileInputStream(path + Constants.KEYSTORE_NAME);
+	    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+	    fis.close();
+	    return keystore;
+	}
 
-	public static void exportCertificate() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
-		FileInputStream is = new FileInputStream(Constants.KEYSTORE_NAME);
-
+	public static void exportCertificate(String alias, String path, String password) 
+			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
+		byte[] buf = getCertificate(alias, path, password).getEncoded();
+		FileOutputStream fos = new FileOutputStream("cert.cer");
+		fos.write(buf);
+		fos.close();
+	}
+	
+	/**
+	 * Retrieves certificate from keystore.
+	 */
+	public static X509Certificate getCertificate(String alias, String path, String password) 
+			throws CertificateException, IOException, NoSuchAlgorithmException, KeyStoreException {
+		FileInputStream fis = new FileInputStream(path + Constants.KEYSTORE_NAME);
+	    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+	    keystore.load(fis, password.toCharArray());
+	    fis.close();
+	    return (X509Certificate) keystore.getCertificate(alias);
+	}
+	
+	/**
+	 * Stores certificate into internal storage.
+	 */
+	public static void storeCertificate(String alias, X509Certificate crt, String path, String password) 
+			throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException {
+		FileInputStream fis = new FileInputStream(path + Constants.KEYSTORE_NAME);
 		KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-		keystore.load(is, "password".toCharArray());
-
-		X509Certificate crt = (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
-
-		byte[] buf = crt.getEncoded();
-
-		FileOutputStream os = new FileOutputStream("cert.cer");
-		os.write(buf);
-		os.close();
+		keystore.load(fis, password.toCharArray());
+		keystore.setCertificateEntry(alias, crt);
+		FileOutputStream fos = new FileOutputStream(path + Constants.KEYSTORE_NAME);
+		keystore.store(fos, password.toCharArray());
+		fis.close();
+		fos.close();
 	}
 }

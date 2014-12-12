@@ -27,7 +27,7 @@ import com.google.common.hash.PrimitiveSink;
 
 public class FacebookFragment extends Fragment {
 
-	private static final String TAG = "FacebookFragment";
+	private static final String TAG = FacebookFragment.class.getName();
 
 	private FacebookFragmentListener mListener;
 	

@@ -5,13 +5,13 @@
     android:orientation="vertical" >
 
     <TextView
-        android:id="@+id/textView1"
+        android:id="@+id/txt_debug"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="" />
 
     <EditText
-        android:id="@+id/editText1"
+        android:id="@+id/edt_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ems="10"
@@ -19,12 +19,5 @@
 
         <requestFocus />
     </EditText>
-
-    <Button
-        android:id="@+id/btn_send_message"
-        style="?android:attr/buttonStyleSmall"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/send_message" />
 
 </LinearLayout>

@@ -17,9 +17,6 @@ import android.content.Intent;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
-
-import com.google.common.hash.BloomFilter;
-
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
 import edu.ucla.encryption.AES;
@@ -31,7 +28,7 @@ import edu.ucla.encryption.PKE;
  */
 public class DataTransferService extends IntentService {
 
-	public static final String TAG = "DataTransferService";
+	private static final String TAG = DataTransferService.class.getName();
 
 	private WifiManager mWifi;
 
@@ -67,16 +64,9 @@ public class DataTransferService extends IntentService {
 	 * @see android.app.IntentService#onHandleIntent(android.content.Intent)
 	 */
 	@Override
-	protected void onHandleIntent(Intent intent) {
-		Log.d(TAG, "Inside onHandleIntent.");
-		
-		if (intent.getAction().equals(Constants.TEST)) {
-			BloomFilter<String> bf = (BloomFilter<String>) intent.getExtras().getSerializable(Constants.EXTRAS_SNP);
-			Log.d(TAG, "Logging from service. Got bf " + bf.toString());
-		}
-		
+	protected void onHandleIntent(Intent intent) {		
 		// At network setup, UDP broadcasts (BF, BF+, CF) and waits for encrypted CF.
-		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_SETUP)) {
+		if (intent.getAction().equals(Constants.NETWORK_INITIATOR_SETUP)) {
 			try {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				socket.setBroadcast(true);
@@ -85,10 +75,8 @@ public class DataTransferService extends IntentService {
 				// Broadcast message.
 				ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
 				ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-				Log.d(TAG, "ATTEMPTING TO GET SERIALIZABLE SNP");
 				outputStream.writeObject(intent.getExtras().getSerializable(Constants.EXTRAS_SNP));
 				outputStream.flush();
-				Log.d(TAG, "FLUSH");
 				byte[] payload = byteStream.toByteArray();
 				int byteCount = payload.length;
 				byte[] payloadSize = new byte[4];
@@ -116,7 +104,15 @@ public class DataTransferService extends IntentService {
 					while (true) {
 						packet = new DatagramPacket(buf, buf.length);
 						socket.receive(packet);
-						Log.i(TAG, "Received response");
+						byte[] encryptedCertificate = packet.getData();
+						Log.i(TAG, "Received response.");
+						
+						// Broadcast packet back to calling activity.
+						intent = new Intent();
+						intent.setAction(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED);
+						intent.putExtra(Constants.EXTRAS_ENCRYPTED_CERTIFICATE, encryptedCertificate);
+						intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
+						sendBroadcast(intent);
 					}
 				} catch (SocketTimeoutException e) {
 					Log.d(TAG, "Receive timed out.");
@@ -129,17 +125,16 @@ public class DataTransferService extends IntentService {
 			}
 		}
 
-		// UDP broadcasts initiator's encrypted key and encrypted message.
-		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_MESSAGE_AND_KEY)) {
+		// Initiator connects to a specific target and sends an encrypted key and encrypted message.
+		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_KEY_AND_MESSAGE)) {
 			try {
-				DatagramSocket socket = new DatagramSocket(Constants.PORT);
+				InetAddress address = InetAddress.getByName(intent.getStringExtra(Constants.EXTRAS_SENDER_IP));
+				DatagramSocket socket = new DatagramSocket(Constants.PORT, address);
 				socket.setBroadcast(true);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
 				
-				// First generate random symmetric key.
-				byte[] symmetricKey = AES.getRandomKey();
-				
 				// Encrypt symmetric key with public key.
+				byte[] symmetricKey = intent.getByteArrayExtra(Constants.EXTRAS_SYMMETRIC_KEY_ENCODED);
 				PublicKey publicKey = (PublicKey) intent.getSerializableExtra(Constants.EXTRAS_PUBLIC_KEY);
 				byte[] encryptedKey = PKE.encrypt(publicKey, symmetricKey);
 
@@ -165,7 +160,7 @@ public class DataTransferService extends IntentService {
 
 				// Encrypt message with AES.
 				String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
-				byte[] plaintext = Utils.toBytes(message.toCharArray());
+				byte[] plaintext = Utils.charToByte(message.toCharArray());
 				byte[] encrypted = AES.encrypt(symmetricKey, plaintext);
 
 				byteCount = encrypted.length;
@@ -195,19 +190,20 @@ public class DataTransferService extends IntentService {
 		}
 
 		// Using UDP, target sends an encrypted message or encrypted certificate to initiator.
+		// TODO: Determine when target should send new certificate.
 		else if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE) || 
 				intent.getAction().equals(Constants.NETWORK_TARGET_SEND_CERTIFICATE)) {
 			try {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
 
-				byte[] symmetricKey = intent.getByteArrayExtra(Constants.EXTRAS_SYMMETRIC_KEY_ENCODED);
+				byte[] key = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_GENERAL_KEY);
 				byte[] encrypted = null;
 				// Encrypt message with AES.
 				if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE)) {
 					String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
-					byte[] plaintext = Utils.toBytes(message.toCharArray());
-					encrypted = AES.encrypt(symmetricKey, plaintext);
+					byte[] plaintext = Utils.charToByte(message.toCharArray());
+					encrypted = AES.encrypt(key, plaintext);
 				}
 				
 				// Encrypt certificate with AES.
@@ -217,7 +213,7 @@ public class DataTransferService extends IntentService {
 					outputStream.writeObject(intent.getSerializableExtra(Constants.EXTRAS_CERTIFICATE));
 					outputStream.flush();
 					byte[] crt = byteStream.toByteArray();
-					encrypted = AES.encrypt(symmetricKey, crt);
+					encrypted = AES.encrypt(key, crt);
 				}
 
 				int byteCount = encrypted.length;

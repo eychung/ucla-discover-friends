@@ -9,13 +9,26 @@ import java.util.Arrays;
 
 
 public class Utils {
-	public static String getRandomName(int length) {
+	public static String getRandomAlias(int length) {
 		StringBuffer buffer = new StringBuffer();
 		String characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
 		int charactersLength = characters.length();
 
 		for (int j = 0; j < length; j++) {
+			double index = Math.random() * charactersLength;
+			buffer.append(characters.charAt((int) index));
+		}
+		return buffer.toString();
+	}
+	
+	public static String generateRandomKeystorePassword() {
+		StringBuffer buffer = new StringBuffer();
+		String characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+
+		int charactersLength = characters.length();
+
+		for (int j = 0; j < 20; j++) {
 			double index = Math.random() * charactersLength;
 			buffer.append(characters.charAt((int) index));
 		}
@@ -29,7 +42,7 @@ public class Utils {
 		return buffer.toString();
 	}
 
-	public static byte[] toBytes(char[] chars) {
+	public static byte[] charToByte(char[] chars) {
 		CharBuffer charBuffer = CharBuffer.wrap(chars);
 		ByteBuffer byteBuffer = Charset.forName("UTF-8").encode(charBuffer);
 		byte[] bytes = Arrays.copyOfRange(byteBuffer.array(),
@@ -38,10 +51,14 @@ public class Utils {
 		Arrays.fill(byteBuffer.array(), (byte) 0); // clear sensitive data
 		return bytes;
 	}
+	
+	public static String byteToString(byte[] bytes) {
+		return new String(bytes, Charset.forName("UTF-8"));
+	}
 
 	public static String hash(String s) throws NoSuchAlgorithmException {
 		MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-		messageDigest.update(toBytes(s.toCharArray()));
+		messageDigest.update(charToByte(s.toCharArray()));
 		return new String(messageDigest.digest(), Charset.forName("UTF-8"));
 	}
 }

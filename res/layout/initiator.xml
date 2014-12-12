@@ -5,7 +5,7 @@
     android:orientation="vertical" >
 
     <Button
-        android:id="@+id/btn_create_group"
+        android:id="@+id/btn_initialize_manet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
@@ -13,10 +13,20 @@
         android:textStyle="bold"
         android:visibility="visible" />
 
+    <EditText
+        android:id="@+id/edt_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:visibility="invisible" >
+
+        <requestFocus />
+    </EditText>
+
     <fragment
         android:id="@+id/frag_list"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/phone_list_height"
+        android:layout_height="@dimen/frag_list_height"
         class="edu.ucla.discoverfriends.DeviceListFragment" >
 
         <!-- Preview: layout=@layout/row_devices -->

@@ -6,11 +6,11 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -25,36 +25,39 @@ import com.facebook.Response;
 import com.facebook.Session;
 import com.facebook.SessionState;
 import com.facebook.model.GraphUser;
-import com.google.common.hash.BloomFilter;
 
 import edu.ucla.common.Constants;
+import edu.ucla.common.Utils;
 import edu.ucla.discoverfriends.FacebookFragment.FacebookFragmentListener;
-import edu.ucla.discoverfriends.InitiatorActivity.StringFunnel;
+import edu.ucla.encryption.Certificate;
 import edu.ucla.encryption.KeyRepository;
 
 /**
  * MainActivity is the home screen activity, allowing users to choose between
- * Initiator and Target role.
+ * Initiator and Target role. A keystore is created with a newly generated
+ * certificate and is stored using the user's ID as the alias.
  * 
  * Connects to Facebook to retrieve user ID and list of friends' IDs. Also,
  * creates a keystore with self-signed certificate.
  * 
- * Sends intent with (String userId, String[] friendsId, X509Certificate crt). 
+ * Sends intent with (String userId, String[] friendsId, X509Certificate crt,
+ * String keystorePassword). 
  */
 public class MainActivity extends Activity implements FacebookFragmentListener {
 
-	public static final String TAG = "MainActivity";
+	private static final String TAG = MainActivity.class.getName();
 
 	// UI
 	@SuppressWarnings("unused")
 	private TextView textDebug;
 	private Button buttonInitiator, buttonTarget;
-	ProgressDialog progressDialog = null;
 
 	// Intent contents to pass to next activity
-	String userId = "";
-	String[] friendsId = null;
-	X509Certificate crt = null;
+	private String userId = "";
+	private String[] friendsId = null;
+	private X509Certificate crt = null;
+	private String keystorePassword = "";
+	private PrivateKey privateKey = null;
 
 
 	public String getUserId() {
@@ -81,6 +84,23 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 		this.crt = crt;
 	}
 
+	public String getKeystorePassword() {
+		return keystorePassword;
+	}
+
+	public void setKeystorePassword(String keystorePassword) {
+		this.keystorePassword = keystorePassword;
+	}
+	
+	public PrivateKey getPrivateKey() {
+		return privateKey;
+	}
+
+	public void setPrivateKey(PrivateKey privateKey) {
+		this.privateKey = privateKey;
+	}
+	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -97,6 +117,8 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 				intent.putExtra(Constants.EXTRAS_USER_ID, getUserId());
 				intent.putExtra(Constants.EXTRAS_FRIENDS_ID, getFriendsId());
 				intent.putExtra(Constants.EXTRAS_CERTIFICATE, getCrt());
+				intent.putExtra(Constants.EXTRAS_KEYSTORE_PASSWORD, getKeystorePassword());
+				intent.putExtra(Constants.EXTRAS_PRIVATE_KEY, getPrivateKey());
 				startActivity(intent);
 			}
 		});
@@ -108,6 +130,8 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 				intent.putExtra(Constants.EXTRAS_USER_ID, getUserId());
 				intent.putExtra(Constants.EXTRAS_FRIENDS_ID, getFriendsId());
 				intent.putExtra(Constants.EXTRAS_CERTIFICATE, getCrt());
+				intent.putExtra(Constants.EXTRAS_KEYSTORE_PASSWORD, getKeystorePassword());
+				intent.putExtra(Constants.EXTRAS_PRIVATE_KEY, getPrivateKey());
 				startActivity(intent);
 			}
 		});
@@ -138,8 +162,14 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 		});
 
 		// Create keystore file and save it into device's internal storage.
+		// Then, create user's certificate and store it into the keystore.
 		try {
-			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath());
+			String keystorePassword = Utils.generateRandomKeystorePassword();
+			this.setKeystorePassword(keystorePassword);
+			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath(), this.getKeystorePassword());
+			PrivateKey privatekey = Certificate.createUserAndStoreCertificate(
+					this.getUserId(), getFilesDir().getAbsolutePath(), this.getKeystorePassword());
+			this.setPrivateKey(privateKey);
 			Log.i(TAG, "Created local keystore.");
 		} catch (GeneralSecurityException e) {
 			Log.e(TAG, e.getMessage());
@@ -199,7 +229,7 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 		KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 		keystore.load(is, "password".toCharArray());
 		is.close();
-		return (X509Certificate) keystore.getCertificate(Constants.USER_CERTIFICATE_ALIAS);
+		return (X509Certificate) keystore.getCertificate(this.getUserId());
 	}
 
 }

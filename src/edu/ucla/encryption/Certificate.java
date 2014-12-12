@@ -1,14 +1,24 @@
 package edu.ucla.encryption;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
+import edu.ucla.common.Constants;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.CertificateAlgorithmId;
 import sun.security.x509.CertificateIssuerName;
@@ -59,4 +69,31 @@ public class Certificate {
 		cert.sign(privkey, algorithm);
 		return cert;
 	}
+
+	public static PrivateKey createUserAndStoreCertificate(String alias, String path, String password) 
+			throws GeneralSecurityException, IOException {
+		FileInputStream fis = new FileInputStream(path + Constants.KEYSTORE_NAME);
+	    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+	    keystore.load(fis, password.toCharArray());
+	    
+		KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+		keyPairGenerator.initialize(1024);
+		KeyPair keyPair = keyPairGenerator.genKeyPair();
+
+		// Create user certificate.
+		String dn = "cn=Eric Chung, o=UCLA, c=US";
+		int days = 1;
+		String algorithm = "MD5WithRSA";
+		X509Certificate crt = generateCertificate(dn, keyPair, days, algorithm);
+		
+		keystore.setCertificateEntry(alias, crt);
+		
+		FileOutputStream fos = new FileOutputStream(path + Constants.KEYSTORE_NAME);
+		keystore.store(fos, password.toCharArray());
+		fos.close();
+		fis.close();
+		
+		return keyPair.getPrivate();
+	}
+	
 }

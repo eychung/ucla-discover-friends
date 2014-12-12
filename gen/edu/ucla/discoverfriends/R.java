@@ -257,7 +257,7 @@ containing a value of this type.
         public static final int com_facebook_usersettingsfragment_profile_picture_height=0x7f040003;
         public static final int com_facebook_usersettingsfragment_profile_picture_width=0x7f040002;
         public static final int facebook_height=0x7f040021;
-        public static final int phone_list_height=0x7f040020;
+        public static final int frag_list_height=0x7f040020;
         public static final int tablet_list_width=0x7f04001f;
     }
     public static final class drawable {
@@ -318,18 +318,17 @@ containing a value of this type.
         public static final int section_header=0x7f020035;
     }
     public static final class id {
-        public static final int action_settings=0x7f090045;
-        public static final int atn_direct_discover=0x7f090044;
-        public static final int atn_direct_enable=0x7f090043;
+        public static final int action_settings=0x7f090043;
+        public static final int atn_direct_discover=0x7f090042;
+        public static final int atn_direct_enable=0x7f090041;
         public static final int authButton=0x7f090035;
         public static final int bottom=0x7f090006;
         public static final int box_count=0x7f090003;
         public static final int btn_connect=0x7f090026;
-        public static final int btn_create_group=0x7f09003b;
         public static final int btn_disconnect=0x7f090027;
+        public static final int btn_initialize_manet=0x7f09003b;
         public static final int btn_initiator=0x7f090037;
         public static final int btn_no=0x7f09002a;
-        public static final int btn_send_message=0x7f090042;
         public static final int btn_start_server=0x7f090028;
         public static final int btn_target=0x7f090038;
         public static final int btn_yes=0x7f090029;
@@ -361,13 +360,13 @@ containing a value of this type.
         public static final int com_facebook_usersettingsfragment_logo_image=0x7f090023;
         public static final int com_facebook_usersettingsfragment_profile_name=0x7f090024;
         public static final int device_address=0x7f09002b;
-        public static final int device_details=0x7f09003f;
+        public static final int device_details=0x7f090040;
         public static final int device_info=0x7f09002c;
-        public static final int device_name=0x7f09003e;
-        public static final int editText1=0x7f090041;
-        public static final int frag_detail=0x7f09003d;
+        public static final int device_name=0x7f09003f;
+        public static final int edt_message=0x7f09003c;
+        public static final int frag_detail=0x7f09003e;
         public static final int frag_facebook=0x7f090039;
-        public static final int frag_list=0x7f09003c;
+        public static final int frag_list=0x7f09003d;
         public static final int group_ip=0x7f09002e;
         public static final int group_owner=0x7f09002d;
         public static final int group_passphrase=0x7f09002f;
@@ -385,7 +384,6 @@ containing a value of this type.
         public static final int standard=0x7f090005;
         public static final int status_bar=0x7f090030;
         public static final int status_text=0x7f090031;
-        public static final int textView1=0x7f090040;
         public static final int top=0x7f090008;
         public static final int txt_debug=0x7f09003a;
     }
@@ -418,11 +416,16 @@ containing a value of this type.
         public static final int home=0x7f080000;
         public static final int initiator=0x7f080001;
         public static final int main=0x7f080002;
+        public static final int target=0x7f080003;
     }
     public static final class string {
         public static final int action_settings=0x7f06001e;
         public static final int app_id=0x7f06001f;
         public static final int app_name=0x7f06001d;
+        public static final int channel_lost_permanently=0x7f060032;
+        /**  Toast messages 
+         */
+        public static final int channel_lost_temporarily=0x7f060031;
         public static final int com_facebook_choose_friends=0x7f060011;
         public static final int com_facebook_dialogloginactivity_ok_button=0x7f060000;
         public static final int com_facebook_image_download_unknown_error=0x7f06001c;
@@ -455,17 +458,25 @@ containing a value of this type.
         public static final int connect_peer_button=0x7f060025;
         public static final int disconnect_peer_button=0x7f060026;
         public static final int discover_peers_button=0x7f060024;
+        public static final int discovery_failed=0x7f060033;
+        public static final int discovery_success=0x7f060034;
         public static final int empty=0x7f060029;
         public static final int empty_message=0x7f06002d;
         public static final int enable_p2p_button=0x7f060023;
         public static final int get_file_button=0x7f060027;
-        public static final int group_owner_text=0x7f06002f;
+        public static final int group_owner_text=0x7f06002e;
         public static final int initialize_manet=0x7f060022;
         public static final int initiator=0x7f060020;
-        public static final int label_me=0x7f060030;
-        public static final int label_peers=0x7f060031;
+        public static final int label_me=0x7f06002f;
+        public static final int label_peers=0x7f060030;
+        public static final int manager_cancel_connect_failed=0x7f060035;
+        public static final int manager_cancel_connect_success=0x7f060036;
+        public static final int manager_connect_failed=0x7f060037;
+        public static final int manager_create_group_failed=0x7f060038;
+        public static final int manager_disconnect_failed=0x7f060039;
         public static final int no=0x7f06002b;
-        public static final int p2p_off_warning=0x7f06002e;
+        public static final int p2p_off_warning=0x7f06003b;
+        public static final int peer_list_empty=0x7f06003a;
         public static final int send_message=0x7f060028;
         public static final int server_text=0x7f06002c;
         public static final int target=0x7f060021;

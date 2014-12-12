@@ -17,39 +17,34 @@
 package edu.ucla.discoverfriends;
 
 import android.app.Fragment;
-import android.app.ProgressDialog;
-import android.net.wifi.WpsInfo;
-import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
-import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener;
-import android.net.wifi.p2p.WifiP2pManager.GroupInfoListener;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
-import edu.ucla.discoverfriends.DeviceListFragment.DeviceActionListener;
 
 /**
  * A fragment that manages a particular peer and allows interaction with device
- * i.e. setting up network connection and transferring data.
+ * such as setting up network connection and transferring data.
  */
-public class DeviceDetailFragment extends Fragment implements ConnectionInfoListener, GroupInfoListener {
+public class DeviceDetailFragment extends Fragment {
 	
-	private static final String TAG = "DeviceDetailFragment";
+	private static final String TAG = DeviceDetailFragment.class.getName();
 
-	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
-	private static final int SOCKET_TIMEOUT = 5000;
+	// UI
 	private View mContentView = null;
-	private WifiP2pDevice device;
-	private WifiP2pInfo info;
-	ProgressDialog progressDialog = null;
+	
+	public WifiP2pDevice device;
+	public WifiP2pInfo info;
 	
 	SetupNetworkPacket receivedCNP = null;
+	
+	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 
+	
 	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
@@ -57,136 +52,12 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
 		mContentView = inflater.inflate(R.layout.device_detail, container);
-		mContentView.findViewById(R.id.btn_connect).setOnClickListener(new View.OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				
-				
-				WifiP2pConfig config = new WifiP2pConfig();
-				config.deviceAddress = device.deviceAddress;
-				config.wps.setup = WpsInfo.PBC;
-				if (progressDialog != null && progressDialog.isShowing()) {
-					progressDialog.dismiss();
-				}
-				progressDialog = ProgressDialog.show(getActivity(), "Press back to cancel",
-						"Connecting to :" + device.deviceAddress, true, true
-						//                        new DialogInterface.OnCancelListener() {
-						//
-						//                            @Override
-						//                            public void onCancel(DialogInterface dialog) {
-						//                                ((DeviceActionListener) getActivity()).cancelDisconnect();
-						//                            }
-						//                        }
-				);
-				((DeviceActionListener) getActivity()).connect(config);
-
-			}
-		});
-
 		return mContentView;
 	}
 
-
-	@Override
-	public void onConnectionInfoAvailable(final WifiP2pInfo info) {
-		if (progressDialog != null && progressDialog.isShowing()) {
-			progressDialog.dismiss();
-		}
-		this.info = info;
-		this.getView().setVisibility(View.VISIBLE);
-		Button btn_yes = (Button) mContentView.findViewById(R.id.btn_yes);
-		Button btn_no = (Button) mContentView.findViewById(R.id.btn_no);
-
-		
-		// The owner IP is now known.
-		TextView view = (TextView) mContentView.findViewById(R.id.group_owner);
-		view.setText(getResources().getString(R.string.group_owner_text)
-				+ ((info.isGroupOwner == true) ? getResources().getString(R.string.yes)
-						: getResources().getString(R.string.no)));
-
-		// InetAddress from WifiP2pInfo struct.
-		view = (TextView) mContentView.findViewById(R.id.device_info);
-		view.setText("CONNECTION INFO: Group Owner IP - " + info.groupOwnerAddress.getHostAddress());
-
-		if (info.groupFormed && info.isGroupOwner) {
-			mContentView.findViewById(R.id.btn_start_server).setVisibility(View.VISIBLE);
-			((TextView) mContentView.findViewById(R.id.status_text)).setText(getResources().getString(R.string.server_text));
-		}
-		else if (info.groupFormed) {
-				new DataReceiverService.TargetSetupTask().execute(((MainActivity)getActivity()).getCrt(), 
-						((MainActivity)getActivity()).getUserId(), ((MainActivity)getActivity()).getFriendsId());
-			//new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, info.groupOwnerAddress.getHostAddress(), fragment.getUid(), receivedCNP).execute();
-		}
-
-		// Hide the connect button.
-		mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
-	}
-	
-
 	/**
-	 * Note: Legacy devices connected through Wi-Fi do not enter through this
-	 * flow. Although the peer list includes them in group.getClientList(),
-	 * the PeerListListener only reflects changes in connections made by
-	 * WiFi Direct compatible devices.
-	 */
-	@Override
-	public void onGroupInfoAvailable(WifiP2pGroup group) {
-		if (progressDialog != null && progressDialog.isShowing()) {
-			progressDialog.dismiss();
-		}
-		this.getView().setVisibility(View.VISIBLE);
-		Button btn_yes = (Button) mContentView.findViewById(R.id.btn_yes);
-		Button btn_no = (Button) mContentView.findViewById(R.id.btn_no);
-		
-		// The owner IP is now known.
-		TextView view = (TextView) mContentView.findViewById(R.id.group_owner);
-		view.setText(getResources().getString(R.string.group_owner_text)
-				+ ((group.isGroupOwner() == true) ? getResources().getString(R.string.yes)
-						: getResources().getString(R.string.no)));
-		
-		// InetAddress from WifiP2pInfo struct.
-		view = (TextView) mContentView.findViewById(R.id.device_info);
-		view.setText("Group Owner IP - " + group.getOwner().deviceAddress);
-		
-		
-		if (group.isGroupOwner()) {
-			// Provides a passphrase for legacy devices to use to connect to
-			// this device, which serves as an AP.
-			view = (TextView) mContentView.findViewById(R.id.group_passphrase);
-			view.setText("GO Passphrase - " + group.getPassphrase());
-		}
-		
-		// Group owner acts as server. Here, we enable the button corresponding
-		// to sending the message containing two Bloom Filters and one
-		// certificate to (one) client.
-		if (group.isGroupOwner() && !group.getClientList().isEmpty()) {
-			mContentView.findViewById(R.id.btn_start_server).setVisibility(View.VISIBLE);
-			((TextView) mContentView.findViewById(R.id.status_text)).setText(getResources().getString(R.string.server_text));
-		}
-		
-		// Client prepares to accept the message passed by the server.
-		else if (!group.isGroupOwner()) {
-			((TextView) mContentView.findViewById(R.id.status_text)).setText("Attempting to retreive packet for " + SOCKET_TIMEOUT + " ms");
-			FacebookFragment fragment = (FacebookFragment) getFragmentManager().findFragmentById(R.id.frag_facebook);
-			//new ClientAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text), btn_yes, btn_no, group.getOwner().deviceAddress, fragment.getUid(), receivedCNP).execute();
-		}
-		
-		else {
-			((TextView) mContentView.findViewById(R.id.status_text)).setText("No other devices connected.");
-		}
-
-		// Hide the connect button.
-		mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
-		
-	}
-
-	/**
-	 * Updates the UI with device data
-	 * 
-	 * @param device the device to be displayed
+	 * Updates the UI with device address and info.
 	 */
 	public void showDetails(WifiP2pDevice device) {
 		this.device = device;
@@ -195,23 +66,13 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		view.setText(device.deviceAddress);
 		view = (TextView) mContentView.findViewById(R.id.device_info);
 		view.setText(device.toString());
-
+		Log.i(TAG, "Showing details of device: " + device.deviceName);
 	}
 
 	/**
-	 * Clears the UI fields after a disconnect or direct mode disable operation.
+	 * Removes the view of this fragment.
 	 */
-	public void resetViews() {
-		mContentView.findViewById(R.id.btn_connect).setVisibility(View.VISIBLE);
-		TextView view = (TextView) mContentView.findViewById(R.id.device_address);
-		view.setText(R.string.empty);
-		view = (TextView) mContentView.findViewById(R.id.device_info);
-		view.setText(R.string.empty);
-		view = (TextView) mContentView.findViewById(R.id.group_owner);
-		view.setText(R.string.empty);
-		view = (TextView) mContentView.findViewById(R.id.status_text);
-		view.setText(R.string.empty);
-		mContentView.findViewById(R.id.btn_start_server).setVisibility(View.GONE);
+	public void removeView() {
 		this.getView().setVisibility(View.GONE);
 	}
 

@@ -12,7 +12,7 @@
         <fragment
             class="com.example.android.wifidirect.DeviceListFragment"
             android:id="@+id/frag_list"
-            android:layout_width="@dimen/phone_list_height"
+            android:layout_width="@dimen/frag_list_height"
             android:layout_height="match_parent">
             <!-- Preview: layout=@layout/row_devices -->
         </fragment>

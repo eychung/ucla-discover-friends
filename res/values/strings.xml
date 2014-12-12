@@ -4,12 +4,9 @@
     <string name="app_name">DiscoverFriend</string>
     <string name="action_settings">Settings</string>
     <string name="app_id">494136867363585</string>
-    
     <string name="initiator">Initiator</string>
     <string name="target">Target</string>
-    
     <string name="initialize_manet">Initialize MANET</string>
-    
     <string name="enable_p2p_button">P2P On/Off</string>
     <string name="discover_peers_button">Discover</string>
     <string name="connect_peer_button">Connect</string>
@@ -21,9 +18,21 @@
     <string name="no">no</string>
     <string name="server_text">This device will act as a server. Click button to broadcast packet.</string>
     <string name="empty_message">No devices found. Turn on P2P and perform discovery from the Action Bar</string>
-    <string name="p2p_off_warning">Enable P2P from action bar button above or system settings</string>
     <string name="group_owner_text">"Am I the Group Owner? "</string>
     <string name="label_me">ME</string>
     <string name="label_peers">PEERS</string>
+
+    <!-- Toast messages -->
+    <string name="channel_lost_temporarily">Channel lost. Trying again.</string>
+    <string name="channel_lost_permanently">Channel lost. Try to disable/enable P2P again.</string>
+    <string name="discovery_failed">Discovery failed: </string>
+    <string name="discovery_success">Discovery success!</string>
+    <string name="manager_cancel_connect_failed">Cancel connect failed: </string>
+    <string name="manager_cancel_connect_success">Cancel connect success!</string>
+    <string name="manager_connect_failed">Connect failed: </string>
+    <string name="manager_create_group_failed">Create group failed: </string>
+    <string name="manager_disconnect_failed">Disconnect failed: </string>
+    <string name="peer_list_empty">Peer list is empty.</string>
+    <string name="p2p_off_warning">P2P is off. Please enable P2P in system settings.</string>
 
 </resources>
