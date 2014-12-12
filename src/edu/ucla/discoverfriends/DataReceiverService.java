@@ -13,15 +13,18 @@ import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
 
+import android.app.Activity;
 import android.app.IntentService;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.util.Pair;
 
 import com.google.common.hash.BloomFilter;
 
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
+import edu.ucla.discoverfriends.TargetActivity.CallbackReceiver;
 import edu.ucla.encryption.AES;
 
 /**
@@ -31,8 +34,6 @@ import edu.ucla.encryption.AES;
 public class DataReceiverService extends IntentService {
 
 	private static final String TAG = DataReceiverService.class.getName();
-
-	private static SetupNetworkPacket snp = null;
 
 	public DataReceiverService(String name) {
 		super(name);
@@ -190,10 +191,18 @@ public class DataReceiverService extends IntentService {
 	 * sending back the target's certificate. Normally, decryption happens
 	 * at the activity level rather than the network level.
 	 */
-	public static class TargetSetupTask extends AsyncTask<Object, Void, SetupNetworkPacket> {
+	public static abstract class TargetSetupTask extends AsyncTask<Object, Void, Pair<SetupNetworkPacket, String>> implements CallbackReceiver {
 
+		Activity activity;
+		
+		public TargetSetupTask(Activity activity) {
+			this.activity = activity;
+		}
+		
+		public abstract void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid);
+		
 		@Override
-		protected SetupNetworkPacket doInBackground(Object... params) {
+		protected Pair<SetupNetworkPacket, String> doInBackground(Object... params) {
 			X509Certificate ownCrt = (X509Certificate) params[0];
 			String uid = (String) params[1];
 			String[] friendsUid = (String[]) params[2];
@@ -272,7 +281,7 @@ public class DataReceiverService extends IntentService {
 					Log.i(TAG, "Sent encrypted certificate to initiator.");
 
 					socket.close();
-					return snp;
+					return new Pair<SetupNetworkPacket, String>(snp, hashedInitiatorUid);
 				}
 			} catch (CertificateExpiredException e) {
 				Log.e(TAG, "Certificate has expired.");
@@ -291,8 +300,8 @@ public class DataReceiverService extends IntentService {
 		}
 
 		@Override
-		protected void onPostExecute(SetupNetworkPacket result) {
-			snp = result;
+		protected void onPostExecute(Pair<SetupNetworkPacket, String> pair) {
+			receiveData(pair.first, pair.second);
 		}
 	}
 

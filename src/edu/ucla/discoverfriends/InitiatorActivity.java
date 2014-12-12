@@ -573,9 +573,9 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					String alias = senderIp;
 					KeyRepository.storeCertificate(alias, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
 				} catch (CertificateExpiredException e) {
-					// Should disconnect the associated peer.
+					Log.e(TAG, e.getMessage());
 				} catch (CertificateNotYetValidException e) {
-					// Should disconnect the associated peer.
+					Log.e(TAG, e.getMessage());
 				} catch (Exception e) {
 					Log.e(TAG, e.getMessage());
 				}

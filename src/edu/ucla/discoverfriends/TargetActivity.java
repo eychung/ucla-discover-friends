@@ -1,6 +1,8 @@
 package edu.ucla.discoverfriends;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -31,6 +33,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
+import edu.ucla.discoverfriends.DataReceiverService.TargetSetupTask;
 import edu.ucla.encryption.AES;
 import edu.ucla.encryption.KeyRepository;
 import edu.ucla.encryption.PKE;
@@ -55,6 +58,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 	private X509Certificate crt = null;
 	private String keystorePassword = null;
 	private PrivateKey privateKey = null;
+	private SetupNetworkPacket snp = null;
 
 	public IntentFilter protocolIntentFilter = null; 
 	public TargetBroadcastReceiver protocolReceiver;
@@ -102,6 +106,14 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 
 	public void setPrivateKey(PrivateKey privateKey) {
 		this.privateKey = privateKey;
+	}
+
+	public SetupNetworkPacket getSnp() {
+		return snp;
+	}
+
+	public void setSnp(SetupNetworkPacket snp) {
+		this.snp = snp;
 	}
 
 
@@ -268,10 +280,46 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 
 		// Target prepares to accept setup message passed by the initiator.
 		if (!group.isGroupOwner()) {
-			new DataReceiverService.TargetSetupTask().execute(this.getCrt(), this.getUserId(), this.getFriendsId()); 
+			TargetSetupTask targetSetupTask = new DataReceiverService.TargetSetupTask(TargetActivity.this) {
+				@Override
+				public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid) {
+					// Finish up network initialization phase.
+					setPostNetworkInitializationView();
+					setSnp(snp);
+					try {
+						byte[] encryptedCertificate = getSnp().getEcf();
+						byte[] cf = AES.decrypt(Utils.charToByte(hashedInitiatorUid.toCharArray()), encryptedCertificate);
+						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cf);
+						ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+						X509Certificate crt = (X509Certificate) inputStream.readObject();
+						KeyRepository.storeCertificate(Constants.INITIATOR_ALIAS, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
+					} catch (CertificateException e) {
+						Log.e(TAG, e.getMessage());
+					} catch (ClassNotFoundException e) {
+						Log.e(TAG, e.getMessage());
+					} catch (IOException e) {
+						Log.e(TAG, e.getMessage());
+					} catch (KeyStoreException e) {
+						Log.e(TAG, e.getMessage());
+					} catch (NoSuchAlgorithmException e) {
+						Log.e(TAG, e.getMessage());
+					} catch (Exception e) {
+						Log.e(TAG, e.getMessage());
+					}
+				}
+			};
+			targetSetupTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId());
 		}
 	}
 
+	public void setPostNetworkInitializationView() {
+		editMessage.setVisibility(View.VISIBLE);
+	}
+
+
+	public interface CallbackReceiver {
+		public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid);
+	}
 
 	public class TargetBroadcastReceiver extends BroadcastReceiver {
 		@Override
