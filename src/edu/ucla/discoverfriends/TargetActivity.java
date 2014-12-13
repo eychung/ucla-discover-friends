@@ -16,6 +16,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.Channel;
@@ -290,6 +292,10 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 		}
 
 		if (!group.isGroupOwner()) {
+			WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+			WifiInfo info = wifiManager.getConnectionInfo();
+			String address = info.getMacAddress();
+			
 			// Target prepares to accept setup message passed by the initiator.
 			TargetSetupSnpTask targetSetupSnpTask = new DataReceiverService.TargetSetupSnpTask(TargetActivity.this) {
 				@Override
@@ -323,7 +329,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 				public void receiveData(byte[] encryptedCrtList) {
 				}
 			};
-			targetSetupSnpTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId());
+			targetSetupSnpTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId(), address);
 			
 			// Target prepares to accept certificate list passed by the initiator.
 			TargetSetupCertificateListTask targetSetupCertificateListTask = new DataReceiverService.
@@ -339,6 +345,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 						byte[] cfList = AES.decrypt(Utils.charToByte(getHashedInitiatorUid().toCharArray()), encryptedCrtList);
 						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cfList);
 						ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+						@SuppressWarnings("unchecked")
 						ArrayList<X509Certificate> crtList = (ArrayList<X509Certificate>) inputStream.readObject();
 						KeyRepository.storeCertificateList(crtList, getFilesDir().getAbsolutePath(), getKeystorePassword());
 					} catch (Exception e) {

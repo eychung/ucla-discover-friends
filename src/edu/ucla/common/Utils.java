@@ -52,8 +52,31 @@ public class Utils {
 		return bytes;
 	}
 	
+	/**
+	 * Specific for byte[4].
+	 */
+	public static byte[] intToByte(int number) {
+		byte[] bytes = new byte[4];
+		for (int i = 0; i < 4; ++i) {
+			int shift = i << 3; // i * 8
+			bytes[3-i] = (byte)((number & (0xff << shift)) >>> shift);
+		}
+		return bytes;
+	}
+	
 	public static String byteToString(byte[] bytes) {
 		return new String(bytes, Charset.forName("UTF-8"));
+	}
+	
+	/**
+	 * Specific for byte[4].
+	 */
+	public static int byteToInt(byte[] bytes) {
+		int byteCount = 0;
+		for (int i = 0; i < 4; ++i) {
+			byteCount |= (bytes[3-i] & 0xff) << (i << 3);
+		}
+		return byteCount;
 	}
 
 	public static String hash(String s) throws NoSuchAlgorithmException {

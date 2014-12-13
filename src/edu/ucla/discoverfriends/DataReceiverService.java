@@ -213,6 +213,7 @@ public class DataReceiverService extends IntentService {
 			X509Certificate ownCrt = (X509Certificate) params[0];
 			String uid = (String) params[1];
 			String[] friendsUid = (String[]) params[2];
+			String address = (String) params[3];
 
 			try {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
@@ -283,9 +284,38 @@ public class DataReceiverService extends IntentService {
 					byte[] key = Utils.charToByte(hashedInitiatorUid.toCharArray());
 					byte[] payload = byteOutputStream.toByteArray();
 					byte[] ecf = AES.encrypt(key, payload);
+					
+					// Send own MAC address to initiator.
+					byte[] macAddress = Utils.charToByte(address.toCharArray());
+					
+					// Send the size of the encrypted certificate first.
+					byteCount = ecf.length;
+					byte[] ecfSize = new byte[4];
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						ecfSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					}
+					packet = new DatagramPacket(ecfSize, 4, packet.getAddress(), Constants.PORT);
+					socket.send(packet);
+					
+					// Send the size of the MAC address second.
+					byteCount = macAddress.length;
+					byte[] macAddressSize = new byte[4];
+					// int -> byte[]
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						macAddressSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					}
+					packet = new DatagramPacket(macAddressSize, 4, packet.getAddress(), Constants.PORT);
+					socket.send(packet);
+					
 					DatagramPacket sendPacket = new DatagramPacket(ecf, ecf.length, packet.getAddress(), packet.getPort());
 					socket.send(sendPacket);
 					Log.i(TAG, "Sent encrypted certificate to initiator.");
+					
+					sendPacket = new DatagramPacket(macAddress, macAddress.length, packet.getAddress(), packet.getPort());
+					socket.send(sendPacket);
+					Log.i(TAG, "Sent MAC address to initiator.");
 					
 					socket.close();
 					return new Pair<SetupNetworkPacket, String>(snp, hashedInitiatorUid);

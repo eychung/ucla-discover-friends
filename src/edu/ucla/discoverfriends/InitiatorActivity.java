@@ -89,6 +89,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 	private SetupNetworkPacket snp = null;
 	private byte[] currentSymmetricKey = null;
 	private ArrayList<InetAddress> targetsIpList = new ArrayList<InetAddress>();
+	private ArrayList<String> eligiblePeers = new ArrayList<String>();
 
 	public IntentFilter protocolIntentFilter = null; 
 	public InitiatorBroadcastReceiver protocolReceiver;
@@ -185,13 +186,21 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 	public void setCurrentSymmetricKey(byte[] currentSymmetricKey) {
 		this.currentSymmetricKey = currentSymmetricKey;
 	}
-	
+
 	public ArrayList<InetAddress> getTargetsIpList() {
 		return targetsIpList;
 	}
 
 	public void setTargetsIpList(ArrayList<InetAddress> targetsIpList) {
 		this.targetsIpList = targetsIpList;
+	}
+
+	public ArrayList<String> getEligiblePeers() {
+		return eligiblePeers;
+	}
+
+	public void setEligiblePeers(ArrayList<String> eligiblePeers) {
+		this.eligiblePeers = eligiblePeers;
 	}
 
 
@@ -257,15 +266,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 				// TODO: Multithread connections for multiple connected devices.
 				// TODO: Should be done as an async task... or at least show when a client is connected.
 				if (!peers.isEmpty()) {
-					WifiP2pConfig config;
-					for (int i = 0; i < peers.size(); i++) {
-						config = new WifiP2pConfig();
-						config.deviceAddress = peers.get(i).deviceAddress;
-						config.wps.setup = WpsInfo.PBC;
-						connect(config);
-					}
-
-					// After connecting to all the peers, broadcast the initiator's setup network packet.
+					// Broadcast the initiator's setup network packet.
 					Intent serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
 					Bundle extras = new Bundle();
 					extras.putSerializable(Constants.EXTRAS_SNP, getSnp());
@@ -291,7 +292,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					} catch (KeyStoreException e) {
 						Log.e(TAG, e.getMessage());
 					}
-					
+
 					setPostNetworkInitializationView();
 				}
 				else {
@@ -606,6 +607,13 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					crt.checkValidity();
 					String alias = senderIp;
 					KeyRepository.storeCertificate(alias, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
+
+					// Connect this peer to the group.
+					WifiP2pConfig config;
+					config = new WifiP2pConfig();
+					config.deviceAddress = intent.getExtras().getString(Constants.EXTRAS_MAC_ADDRESS);
+					config.wps.setup = WpsInfo.PBC;
+					connect(config);
 				} catch (CertificateExpiredException e) {
 					Log.e(TAG, e.getMessage());
 				} catch (CertificateNotYetValidException e) {

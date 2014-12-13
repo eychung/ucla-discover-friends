@@ -44,6 +44,7 @@ public class Constants {
 	public static final String EXTRAS_ENCRYPTED_SYMMETRIC_KEY = "encrypted_symmetric_key"; // byte[]
 	public static final String EXTRAS_FRIENDS_ID = "friends_id"; // String[]
 	public static final String EXTRAS_MESSAGE = "message"; // String
+	public static final String EXTRAS_MAC_ADDRESS = "mac_address"; // String
 	public static final String EXTRAS_PUBLIC_KEY = "public_key"; // PublicKey
 	public static final String EXTRAS_PRIVATE_KEY = "private_key"; // PrivateKey
 	public static final String EXTRAS_KEYSTORE_PASSWORD = "keystore_password"; // String

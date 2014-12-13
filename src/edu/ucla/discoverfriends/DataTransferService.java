@@ -102,31 +102,47 @@ public class DataTransferService extends IntentService {
 				socket.send(packet);
 				Log.i(TAG, "Broadcasted server setup message.");
 
-				// Wait for connected clients to send back their own encrypted certificate until SOCKET_TIMEOUT.
+				// Wait for connected clients to send back their own encrypted certificate and MAC address until SOCKET_TIMEOUT.
 				byte[] buf = new byte[Constants.BYTE_ARRAY_SIZE];
 				try {
 					while (true) {
+						// Get byte size of certificate.
 						byte[] data = new byte[4];
 						packet = new DatagramPacket(data, data.length);
 						socket.receive(packet);
-
-						byteCount = 0;
-						// byte[] -> int
+						int ecfSize = 0;
 						for (int i = 0; i < 4; ++i) {
-							byteCount |= (data[3-i] & 0xff) << (i << 3);
+							ecfSize |= (data[3-i] & 0xff) << (i << 3);
 						}
 						
-						// From above, know the length of the payload.
-						byte[] packetSize = new byte[byteCount];
+						// Get byte size of MAC address.
+						data = new byte[4];
+						packet = new DatagramPacket(data, data.length);
+						socket.receive(packet);
+						int macAddressSize = 0;
+						for (int i = 0; i < 4; ++i) {
+							macAddressSize |= (data[3-i] & 0xff) << (i << 3);
+						}
+						
+						// Get encrypted certificate.
+						byte[] packetSize = new byte[ecfSize];
 						packet = new DatagramPacket(packetSize, packetSize.length);
 						socket.receive(packet);
 						byte[] encryptedCertificate = packet.getData();
-						Log.i(TAG, "Received response.");
+						Log.i(TAG, "Received encrypted certificate.");
+						
+						// Get MAC address.
+						packetSize = new byte[macAddressSize];
+						packet = new DatagramPacket(packetSize, packetSize.length);
+						socket.receive(packet);
+						byte[] macAddress = packet.getData();
+						Log.i(TAG, "Received MAC address.");
 
 						// Broadcast packet back to calling activity.
 						intent = new Intent();
 						intent.setAction(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED);
 						intent.putExtra(Constants.EXTRAS_ENCRYPTED_CERTIFICATE, encryptedCertificate);
+						intent.putExtra(Constants.EXTRAS_MAC_ADDRESS, Utils.byteToString(macAddress));
 						intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
 						sendBroadcast(intent);
 					}
