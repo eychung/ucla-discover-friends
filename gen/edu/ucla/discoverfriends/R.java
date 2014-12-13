@@ -422,10 +422,10 @@ containing a value of this type.
         public static final int action_settings=0x7f06001e;
         public static final int app_id=0x7f06001f;
         public static final int app_name=0x7f06001d;
-        public static final int channel_lost_permanently=0x7f060032;
+        public static final int channel_lost_permanently=0x7f060030;
         /**  Toast messages 
          */
-        public static final int channel_lost_temporarily=0x7f060031;
+        public static final int channel_lost_temporarily=0x7f06002f;
         public static final int com_facebook_choose_friends=0x7f060011;
         public static final int com_facebook_dialogloginactivity_ok_button=0x7f060000;
         public static final int com_facebook_image_download_unknown_error=0x7f06001c;
@@ -458,27 +458,25 @@ containing a value of this type.
         public static final int connect_peer_button=0x7f060025;
         public static final int disconnect_peer_button=0x7f060026;
         public static final int discover_peers_button=0x7f060024;
-        public static final int discovery_failed=0x7f060033;
-        public static final int discovery_success=0x7f060034;
+        public static final int discovery_failed=0x7f060031;
+        public static final int discovery_success=0x7f060032;
         public static final int empty=0x7f060029;
-        public static final int empty_message=0x7f06002d;
+        public static final int empty_message=0x7f06002c;
         public static final int enable_p2p_button=0x7f060023;
         public static final int get_file_button=0x7f060027;
-        public static final int group_owner_text=0x7f06002e;
         public static final int initialize_manet=0x7f060022;
         public static final int initiator=0x7f060020;
-        public static final int label_me=0x7f06002f;
-        public static final int label_peers=0x7f060030;
-        public static final int manager_cancel_connect_failed=0x7f060035;
-        public static final int manager_cancel_connect_success=0x7f060036;
-        public static final int manager_connect_failed=0x7f060037;
-        public static final int manager_create_group_failed=0x7f060038;
-        public static final int manager_disconnect_failed=0x7f060039;
+        public static final int label_me=0x7f06002d;
+        public static final int label_peers=0x7f06002e;
+        public static final int manager_cancel_connect_failed=0x7f060033;
+        public static final int manager_cancel_connect_success=0x7f060034;
+        public static final int manager_connect_failed=0x7f060035;
+        public static final int manager_create_group_failed=0x7f060036;
+        public static final int manager_disconnect_failed=0x7f060037;
         public static final int no=0x7f06002b;
-        public static final int p2p_off_warning=0x7f06003b;
-        public static final int peer_list_empty=0x7f06003a;
+        public static final int p2p_off_warning=0x7f060039;
+        public static final int peer_list_empty=0x7f060038;
         public static final int send_message=0x7f060028;
-        public static final int server_text=0x7f06002c;
         public static final int target=0x7f060021;
         public static final int yes=0x7f06002a;
     }

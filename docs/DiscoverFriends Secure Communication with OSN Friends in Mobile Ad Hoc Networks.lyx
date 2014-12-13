@@ -1,0 +1,2210 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass IEEEtran
+\begin_preamble
+% for subfigures/subtables
+\usepackage[caption=false,font=footnotesize]{subfig}
+\end_preamble
+\options conference
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding default
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command bibtex
+\index_command default
+\float_placement tbh
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_title "Your Title"
+\pdf_author "Your Name"
+\pdf_bookmarks true
+\pdf_bookmarksnumbered true
+\pdf_bookmarksopen true
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder true
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle false
+\pdf_quoted_options "pdfpagelayout=OneColumn, pdfnewwindow=true, pdfstartview=XYZ, plainpages=false"
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 0
+\use_package esint 0
+\use_package mathdots 1
+\use_package mathtools 0
+\use_package mhchem 1
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+DiscoverFriends: Secure Communication with OSN Friends in Mobile Ad Hoc
+ Networks
+\end_layout
+
+\begin_layout Author
+\begin_inset Flex Author Name
+status collapsed
+
+\begin_layout Plain Layout
+Eric Chung
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Author Affiliation
+status collapsed
+
+\begin_layout Plain Layout
+Department of Computer Science
+\begin_inset Newline newline
+\end_inset
+
+University of California at Los Angeles
+\begin_inset Newline newline
+\end_inset
+
+echung@cs.ucla.edu
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Abstract
+This paper presents a secure communication application called DiscoverFriends.
+ Its purpose is to communicate to a group of online friends while bypassing
+ their respective social networking servers under a mobile ad hoc network
+ environment.
+ DiscoverFriends leverages Bloom filters and a hybrid encryption technique
+ with a self-organized public-key management scheme to securely identify
+ friends and provide authentication.
+ Firstly, Bloom filters provide a space-efficient means of security for
+ friend discovery.
+ Secondly, a combination of asymmetric and symmetric encryptions algorithms
+ utilizes the benefits of both to provide increased security at lower computatio
+nal cost.
+ Thirdly, a self-organized public-key management scheme helps authenticate
+ users using a trust graph in an infrastructureless setting.
+ With the use of Wi-Fi Direct technology, an initiator is able to establish
+ an ad hoc network where friends can connect to within the application.
+ DiscoverFriends was analyzed under two threat models: replay attacks and
+ eavesdropping by a common friend.
+ Finally, the paper evaluates the application based on storage usage and
+ processing.
+\end_layout
+
+\begin_layout Keywords
+Mobile ad hoc networks (MANET), bloom filter, key management
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+Mobile devices, such as smartphones and tablets, have become a rising platform
+ for Online Social Networks (OSNs).
+ Facebook, for example, reported over 1 billion mobile users 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "statista"
+
+\end_inset
+
+ in the first quarter of 2014.
+ Why are so many users moving to the mobile platform? One possible reason
+ is that users can have instantaneous access to OSN with mobile devices
+ at any time and place.
+ But more importantly, users are attracted by the various interesting features
+ that are only available on mobile platforms.
+ Location-based services (LBS) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "i._a._junglas"
+
+\end_inset
+
+ is one of the top features exploited by mobile users.
+\end_layout
+
+\begin_layout Standard
+With GPS integrated into smartphones, mobile OSN users can easily localize
+ themselves, which allows them to share their own location and related experienc
+es with friends (e.g., the 
+\begin_inset Quotes eld
+\end_inset
+
+Check-in
+\begin_inset Quotes erd
+\end_inset
+
+ feature of the Facebook mobile app).
+ Since it does so, users are more able to find nearby friends based on their
+ locations.
+ Therefore, the LBS functionality provides great convenience for users'
+ social activities.
+\end_layout
+
+\begin_layout Standard
+However, the application of LBS in OSNs also incurs some concerns surrounding
+ the issue of privacy.
+ When a user activates the LBS function in an OSN application, it exposes
+ the user's location to the OSN service provider.
+ In other words, Facebook can track the user's activity with this location
+ information.
+ One question is: Can the OSN users still utilize partial LBS without reporting
+ their location to OSN providers? Typically, can we find nearby friends
+ without requesting them from the Facebook servers? This project provides
+ a solution to this problem.
+\end_layout
+
+\begin_layout Standard
+In this work, a Wi-Fi-based solution called DiscoverFriends helps an OSN
+ user find nearby friends.
+ The core idea is to leverage the local Wi-Fi communication to directly
+ discover an OSN friend while bypassing OSN servers.
+ The design faces two main challenges.
+ The first problem is how to authenticate an OSN user without going to the
+ OSN server.
+ Second, due to the broadcast nature of wireless communication, the messages
+ can be overheard by other users.
+ The potential eavesdropping can be a new threat to the privacy.
+ To this end, DiscoverFriends addresses these issues using a Bloom filter-based
+ approach with hybrid encryption to provide a higher level of security.
+\end_layout
+
+\begin_layout Standard
+The solution provided by DiscoverFriends is not only limited to discovering
+ nearby friends.
+ It can further be employed to setup communication between friends in the
+ same local Wi-Fi.
+ In other words, OSN users can exchange text messages and other data without
+ going through the OSN server, which further helps to prevent users from
+ being tracked by those OSN providers.
+\end_layout
+
+\begin_layout Standard
+This paper is organized as follows.
+ Section 2 begins by elaborating on the application design followed by implement
+ation details presented in Section 3.
+ Section 4 describes the risk analysis under two threat models.
+ Performance evaluation in Section 5 is done against alternative schemes
+ described in the related works in Section 6.
+ Lastly, Section 7 summarizes the features of the application and concludes
+ the paper.
+ 
+\end_layout
+
+\begin_layout Section
+Design
+\end_layout
+
+\begin_layout Standard
+In DiscoverFriends, any OSN user can serve as an 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ and leverage Wi-Fi broadcast to send request messages in order to find
+ a specified friend, hereby referred to as 
+\begin_inset Formula $Target$
+\end_inset
+
+.
+ If the target receives the request, the target will then send back an acknowled
+gement to the initiator.
+ The request message is constructed using Bloom filters and a certificate
+ to achieve confidentiality and authentication, respectively.
+\end_layout
+
+\begin_layout Standard
+The solution proposed is built based on an important assumption: each OSN
+ user has a confidential ID, which is only accessible to the user's friends.
+ This ID is not necessarily the string that OSNs use to identify each user,
+ but it can be an extra confidential string.
+ For instance, Facebook provides a user with a public username and private
+ ID.
+ This assumption is reasonable since many OSNs have access control mechanisms,
+ in which users can specify the accessibility of private information (e.g.,
+ whether it is public to all users or friends only).
+\end_layout
+
+\begin_layout Standard
+Furthermore, DiscoverFriends is not limited to supporting only one OSN as
+ it can utilize IDs from multiple OSNs to improve security.
+ More specifically, users can XOR their IDs in Facebook and Google+ to generate
+ a new ID.
+ This new ID cannot be recognized by any single OSN provider even if the
+ provider somehow captures the message.
+ One drawback of this technique is that the intended friend has to be the
+ initiator's friend on multiple OSNs, which may limit the usage of the applicati
+on.
+\end_layout
+
+\begin_layout Standard
+In this section, the application of Bloom filters is introduced and then
+ explained how they are applied in DiscoverFriends.
+ In addition to that, two encryption mechanisms are analyzed and a combined
+ solution is selected to be used in the application.
+ Moreover, an overview of key management techniques is provided, where one
+ scheme is selected to be used in the application.
+ Finally, the communication protocol is examined between the initiator and
+ the target.
+\end_layout
+
+\begin_layout Subsection
+Bloom Filter
+\end_layout
+
+\begin_layout Standard
+Bloom filter is a space-efficient probabilistic data structure, whose purpose
+ is to test whether a specific element is in a given set or not.
+ It may produce false positive results but will definitely not return false
+ negative results.
+ Bloom filter is widely used in caching mechanisms as well as security solutions.
+\end_layout
+
+\begin_layout Standard
+Bloom filter is simply an 
+\begin_inset Formula $m$
+\end_inset
+
+-bit array.
+ When an element is added into a Bloom filter, 
+\begin_inset Formula $k$
+\end_inset
+
+ hash function is applied on the element to get 
+\begin_inset Formula $k$
+\end_inset
+
+ hash values in the range of [0, 
+\begin_inset Formula $m$
+\end_inset
+
+).
+ Then, the corresponding bits in the array are set to 1.
+ When testing for an element, the same set of hash functions are applied
+ before checking to see whether the corresponding bits in the Bloom filter
+ are set to 1.
+ If all of them are 1, then it means that the given element is included
+ in the set; otherwise, it is excluded in the set.
+ This explanation can be shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "bloom_filter_representation"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename Bloom Filter Representation.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Bloom filter representation
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "bloom_filter_representation"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When designing the Bloom filter, one focus is to optimize the number of
+ hash functions 
+\begin_inset Formula $k$
+\end_inset
+
+ and the length of the Bloom filter 
+\begin_inset Formula $m$
+\end_inset
+
+, which can be calculated as a function of 
+\begin_inset Formula $n$
+\end_inset
+
+, the number of inserted items, and 
+\begin_inset Formula $p$
+\end_inset
+
+, the desired false positive probability as shown in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:m"
+
+\end_inset
+
+.
+ In the case of DiscoverFriends, 
+\begin_inset Formula $n$
+\end_inset
+
+ is the number of targeted friends the initiator wants to communicate to.
+ Also, the choice of a small 
+\begin_inset Formula $p$
+\end_inset
+
+ value is necessary as it corresponds to the probability that an attacker
+ may be able to ascertain the hash of the initiator's ID.
+ Subsequently, the appropriate 
+\begin_inset Formula $k$
+\end_inset
+
+ value can be computed using 
+\begin_inset Formula $m$
+\end_inset
+
+ and 
+\begin_inset Formula $n$
+\end_inset
+
+ using Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:k"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+m=-\frac{n\ln p}{\left(\ln2\right)^{2}}\label{eq:m}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+k=\frac{m}{n}\ln2\label{eq:k}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In DiscoverFriends, Bloom filters serve as the container of the IDs for
+ friends.
+ More specifically, when the initiator, who will be called Alice, sends
+ the initial request, she adds the target's ID into a Bloom filter, which
+ will be sent during the network initialization phase for friend discovery.
+ Thus, when the target, say Bob, gets the request, he can determine whether
+ or not the request is directed to him.
+ In addition, Alice will also include her own ID in another Bloom filter
+ carried in the request, so the target can also figure out who the initiator
+ is.
+\end_layout
+
+\begin_layout Standard
+By using this technique, OSN users are not required to put their confidential
+ ID into the broadcast message, which can be listened to by other people.
+ Therefore, even if an adversary, Eve, eavesdrops the request message, it
+ is extremely difficult for her to infer the initiator's ID if she is not
+ the initiator's friend because the adversary only knows the hash values
+ and cannot acquire the accurate corresponding ID with the hash values,
+ let alone understand the user corresponding to that ID.
+ However, it is important to note that although the use of Bloom filters
+ can speed up initiator ID discovery and reduce latency, it makes it easier
+ for non-friends to discover the ID.
+ Thus, security is traded off at the expense of lower discovery latency.
+\end_layout
+
+\begin_layout Subsection
+Encryption Mechanisms
+\end_layout
+
+\begin_layout Standard
+When designing DiscoverFriends, the idea was to optimize over computational
+ cost, storage cost, and security.
+ Here, computational cost is an important issue under a mobile setting due
+ to energy consumption from calls to encrypt and decrypt data.
+ Asymmetric encryption algorithms such as RSA, PGP, and GPG grant higher
+ security at the cost of processing power.
+ On the other hand, symmetric encryption algorithms such as AES, Blowfish,
+ DES, and 3DES provide lower security at a lower computational cost and
+ storage cost.
+\end_layout
+
+\begin_layout Standard
+In order to achieve the best of both worlds, DiscoverFriends uses a combination
+ of asymmetric and symmetric algorithms.
+ The general idea is to use a symmetric key to encrypt data and then encrypt
+ that key asymmetrically.
+ This message is then transmitted to a destination node along with the encrypted
+ key.
+ Because the message is encrypted using a symmetric algorithm, the computational
+ cost to decrypt the message is less while at the same time, the encrypted
+ key produced using an asymmetric algorithm provides higher security.
+ For the symmetric algorithm, AES is chosen as it outperforms the other
+ algorithms in terms of throughput in MANETs as shown in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "throughput"
+
+\end_inset
+
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "m._umaparvathi"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Throughput in MB/sec
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "throughput"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename Throughput.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Digital Signature and Key Management
+\end_layout
+
+\begin_layout Standard
+To ensure the security of the application, the idea was to use certificates
+ for authentication.
+ In order to generate a public key certificate, two schemes exist: public
+ key infrastructure (PKI) and web of trust.
+ In PKI systems, a certificate authority (CA) issues certificates that binds
+ public keys to identities, and this information is kept in a central repository.
+ On the other hand, a web of trust entails identity-based cryptography through
+ self-signed certificates, where a key generation center (KGC) generates
+ users' private keys.
+ Evidently, this scheme is highly susceptible to man-in-the-middle attacks.
+\end_layout
+
+\begin_layout Standard
+However, things are not that simple in an infrastructure-less model.
+ Because of the ad hoc nature of DiscoverFriends, conventional public key
+ infrastructure and web of trust schemes are less suitable for the application
+ due to complicated certificate management 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "k._sadasivam"
+
+\end_inset
+
+.
+ Also, certificate authorization becomes impractical.
+ The problem becomes clear when nodes cannot guarantee their connectivity
+ and cannot rely on infrastructure to detect compromised mobile nodes 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "j._macker"
+
+\end_inset
+
+.
+ In addition, certificate revocation in MANETs 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "p._rathi"
+
+\end_inset
+
+ becomes an issue because of the lack of centralized repositories and trusted
+ authorities.
+\end_layout
+
+\begin_layout Standard
+There are two main types of public-key cryptography: certificate-based cryptogra
+phy (CBC) and ID-based cryptography (IBC).
+ Previous works 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "s._yi"
+
+\end_inset
+
+ have attempted to use CBC in MANETs.
+ A naive approach for key distribution occurs in the network setup phase,
+ where every node is preloaded with all other's public key certificates.
+ However, as mentioned above, key management becomes an issue as key updates
+ need to be handled in a cost-effective manner 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "j.-j._haas"
+
+\end_inset
+
+.
+ As a result, an improvement 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "s._capkun"
+
+\end_inset
+
+ using self-organized public-key management was built on the idea of a certifica
+te chain.
+ In a different angle, IBC eliminates the need for public-key distribution
+ and certificates altogether by using a public key based off a public string
+ identifying an individual.
+ The underlying idea of IBC-based certificateless public-key management
+ schemes is to have a set of network nodes share a master-key generated
+ by threshold cryptography and collaboratively issue ID-based private keys.
+ Built on top of the underlying concept, variations on the designing of
+ certificateless public keys have come about in recent literature 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "y._zhang_1,y._zhang_2,z._zhang"
+
+\end_inset
+
+.
+ The downside of IBC is if the threshold number of nodes gets compromised,
+ the network is breached.
+\end_layout
+
+\begin_layout Standard
+DiscoverFriends uses a self-organized public-key management approach.
+ Further details can be read up on in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "k._sahadevaiah"
+
+\end_inset
+
+.
+ Every node in the network contains the following:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Key repository (KR)
+\series default
+: Stores public keys sent by neighbor node.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Shared key repository (SKR)
+\series default
+: Stores public keys of all nodes from the KR.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Certificate repository (CR)
+\series default
+: Stores valid self-signed certificates.
+\end_layout
+
+\begin_layout Standard
+In order to assess the security in the formation of trust, the network initializ
+ation phase plays an important role.
+ The main objective of this phase is to distribute all the public keys to
+ every node in the network.
+ Instead of a certificate graph, a trust graph (TG) is generated by the
+ shared key repository per node.
+ At the end of the initialization phase, this trust graph is stored as a
+ master graph (MG), which facilitates frequent public key updates.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename Architecture.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Architecture
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "architecture"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In its reduced form, DiscoverFriends' model can be simplified as target
+ nodes do not serve as intermediary nodes for other target nodes as shown
+ in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "architecture"
+
+\end_inset
+
+.
+ However, during prolonged application usage, it may be energy-efficient
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "d._camps-mur,s._trifunovic"
+
+\end_inset
+
+ to pass group ownership to a target node (i.e.
+ x1) once the secure environment has been set up.
+ This sets the need for an efficient key management scheme specifically
+ designed for MANETs.
+ In this case, the target node must know the certificate and public key
+ associated with all nodes within its group.
+ Therefore, the TG provides a path to the end node, which has the corresponding
+ private key to decrypt the sender's message.
+ Within the data structures of each node, valid certificates and public
+ keys of all other nodes in the group are contained.
+ The transmission of the information is done during the network initialization
+ phase, which in the case of DiscoverFriends, happens between friend discovery
+ and communicating to the group of nodes.
+\end_layout
+
+\begin_layout Subsection
+Communication Protocol
+\end_layout
+
+\begin_layout Standard
+The communication protocol consists of two parties: 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ and 
+\begin_inset Formula $Target$
+\end_inset
+
+.
+ The first two stages represent the network initialization phase.
+ In the first stage, the initiator, who wants to discover a certain friend
+ (target), sends a Wi-Fi broadcast request consisting of three parts:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+\begin_inset Formula $BF_{c}$
+\end_inset
+
+
+\series default
+: The Bloom filter containing the 
+\begin_inset Formula $Target$
+\end_inset
+
+'s ID.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+\begin_inset Formula $BF_{c}$
+\end_inset
+
+
+\series default
++: 
+\begin_inset Formula $BF_{c}\oplus hash\, of\, Initiator's\, ID$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+\begin_inset Formula $CF$
+\end_inset
+
+
+\series default
+: 
+\begin_inset Formula $Initiator$
+\end_inset
+
+'s certificate encrypted with AES; the encryption key is the hash of the
+ 
+\begin_inset Formula $Initiator$
+\end_inset
+
+'s ID.
+\end_layout
+
+\begin_layout Standard
+Here, 
+\begin_inset Formula $BF_{c}$
+\end_inset
+
+ is used to identify whether the target is a person of interest in the invitatio
+n.
+ 
+\begin_inset Formula $BF_{c}+$
+\end_inset
+
+ builds on top of this knowledge and helps the target identify the initiator.
+ Lastly, 
+\begin_inset Formula $CF$
+\end_inset
+
+ is used for authentication without going through the OSN server.
+ In detail, the certificate contained inside is self-signed by the initiator.
+\end_layout
+
+\begin_layout Standard
+In the second stage of the protocol, the target receives the request message
+ and proceeds in the following steps:
+\end_layout
+
+\begin_layout Enumerate
+Test whether the 
+\begin_inset Formula $Target$
+\end_inset
+
+'s own ID is in 
+\begin_inset Formula $BF_{c}$
+\end_inset
+
+ .
+ If not, terminate the procedure.
+ Otherwise, proceed to next step.
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $BF_{c}\oplus BF_{c}+\rightarrow hash\, of\, Initiator's\, ID$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Traverse the 
+\begin_inset Formula $Target$
+\end_inset
+
+'s own friend list and apply has functions to each friend's ID to determine
+ if a match with the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+'s ID exists.
+\end_layout
+
+\begin_layout Enumerate
+Once a match has been found, take the hash of 
+\begin_inset Formula $Initiator$
+\end_inset
+
+'s ID to decrypt 
+\begin_inset Formula $CF$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Check the validity of the certificate in 
+\begin_inset Formula $CF$
+\end_inset
+
+ and finish authentication.
+\end_layout
+
+\begin_layout Enumerate
+If the 
+\begin_inset Formula $Target$
+\end_inset
+
+ accepts the invitation from the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+, the 
+\begin_inset Formula $Target$
+\end_inset
+
+ replies with own certificate encrypted with AES; the encryption key is
+ the hash of the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ 's ID.
+\end_layout
+
+\begin_layout Standard
+In stage three, once all peers are connected, the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ sends the set of certificates to the connected peers.
+ Step 6 and stage three are necessary for the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ to update the SKR and CR of other targets that are connected to the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ such that after the network initialization phase, proper key management
+ is ensured and eavesdropping attempts are averted.
+ Assuming all targets who want to connect to the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ are connected, the network initialization phase ends.
+ This leads into stage four and stage five, which represent subsequent communica
+tion.
+ Optionally, step 6 is repeated as many times as necessary during network
+ connection in order to push certificate updates to the group as certificates
+ may expire during the communication session.
+ These two stages may be repeated multiple times until the connection is
+ broken.
+ In stage four, the 
+\begin_inset Formula $Initiator$
+\end_inset
+
+ communicates to the 
+\begin_inset Formula $Target$
+\end_inset
+
+ as follows:
+\end_layout
+
+\begin_layout Enumerate
+Generates a random symmetric encryption key.
+\end_layout
+
+\begin_layout Enumerate
+Uses symmetric key to encrypt a message.
+\end_layout
+
+\begin_layout Enumerate
+Encrypts symmetric key using own public key.
+\end_layout
+
+\begin_layout Enumerate
+Broadcasts the encrypted message and encrypted key.
+\end_layout
+
+\begin_layout Standard
+In response, the 
+\begin_inset Formula $Target$
+\end_inset
+
+ replies in the following manner:
+\end_layout
+
+\begin_layout Enumerate
+Uses own private key to decrypt the symmetric key.
+\end_layout
+
+\begin_layout Enumerate
+Uses symmetric key to decrypt the message.
+\end_layout
+
+\begin_layout Enumerate
+Sends back an AES-encrypted message to 
+\begin_inset Formula $Initiator$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Now, the initiator and target are able to communicate directly, effectively
+ bypassing OSN servers.
+ The packet data for the communication protocol can be shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "communication_protocol"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Communication Protocol.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Communication Protocol
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "communication_protocol"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Implementation
+\end_layout
+
+\begin_layout Standard
+In this section, details of the implementation are provided, including the
+ Bloom filter, Wi-Fi communication, and OSN adaptors.
+ The simple interface for the DiscoverFriends is shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "interface-a"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "interface-b"
+
+\end_inset
+
+, and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "interface-c"
+
+\end_inset
+
+.
+ The application has features for turning on Wi-Fi Direct, discovering nearby
+ peers, creating a group, connecting to OSNs, and querying the list of friends
+ from OSN servers.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement t
+wide true
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "30text%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename MainActivity.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+MainActivity
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "interface-a"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset space \hfill{}
+\end_inset
+
+
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "30text%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename InitiatorActivity.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+InitiatorActivity
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset CommandInset label
+LatexCommand label
+name "interface-b"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset space \hfill{}
+\end_inset
+
+
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "30text%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename TargetActivity.png
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+TargetActivity
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset CommandInset label
+LatexCommand label
+name "interface-c"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Bloom Filter
+\end_layout
+
+\begin_layout Standard
+One important issue of implementing Bloom filters is the usage of the hash
+ function.
+ There are several candidates, including murmur, fvn series of hashes, Jenkins
+ Hashes, etc.
+ Not only should the ideal hash function provide independent and uniformly
+ distributed results, it should also be as fast as possible to account for
+ the mobile platforms' limited computation capabilities.
+ Therefore, the final choice should preferably avoid widely used hashing
+ algorithms, which generally run slow.
+ After considering different factors, murmur32 was selected as the prime
+ hash function for DiscoverFriends and the parameter to reduce the false
+ positive probability was tuned to 2%.
+\end_layout
+
+\begin_layout Subsection
+Encryption
+\end_layout
+
+\begin_layout Standard
+For symmetric key encryption, DiscoverFriends uses AES encryption.
+ In the network initialization phase, the secret key is the SHA-1 hash of
+ the initiator's ID, trimmed to use only the first 128 bits.
+ During subsequent message exchanges, the secret key is randomly generated
+ using SHA1PRNG.
+ Also, for this scheme, the cipher uses a PKCS5Padding transformation, which
+ supports AES 128-bit keys.
+\end_layout
+
+\begin_layout Standard
+As for asymmetric cryptography, a public/private key pair is generated using
+ a RSA algorithm, in which key sizes are 1024 bits.
+ With this key pair, DiscoverFriends generates self-signed X.509 certificates
+ using the sun.security.x509 package.
+ An alternative library was to ues Bouncy Castle X509V*CertificateGenerator
+ classes.
+ The algorithm used to sign the certificate is MD5WithRSA.
+\end_layout
+
+\begin_layout Subsection
+Wi-Fi Broadcast
+\end_layout
+
+\begin_layout Standard
+To implement Wi-Fi broadcast on Android, the IP address of the Wi-Fi interface
+ is firstly retrieved.
+ Then, the corresponding Wi-Fi broadcast address is derived.
+ Afterwards, a UDP socket is established to send broadcast messages.
+\end_layout
+
+\begin_layout Standard
+Despite the straightforward implementation, trouble arose when testing the
+ Wi-Fi broadcast.
+ Although successful observation of broadcast packets on the receiver with
+ 
+\emph on
+tcpdump
+\emph default
+ traces, the UDP socket on the receiver cannot receive the packet correctly.
+ It is found out later that it was indeed a device-dependent issue.
+ Some Android HTC devices do not handle the broadcast messages properly
+ due to the configuration of the device.
+\end_layout
+
+\begin_layout Subsection
+Wi-Fi Direct
+\end_layout
+
+\begin_layout Standard
+First, a brief introduction of Wi-Fi Direct is necessary, followed by a
+ discussion on the choice and effectiveness of this technology.
+ The main purpose of Wi-Fi Direct is to enable peer-to-peer connections
+ without requiring a wireless access point (AP), allowing both one-to-one
+ and one-to-many connections among different devices through Wi-Fi speeds.
+ To enable compatibility for older devices using this newer technology,
+ only one device needs to be certified to the protocol to allow for communicatio
+n.
+ Android's Wi-Fi Direct group supports legacy devices by setting up a wireless
+ access point for these devices to connect to.
+ However, this approach is not suitable under the DiscoverFriends application
+ as described below.
+ In addition, this technology enables connection establishment with any
+ device discovered within a 200 meter radius, thereby leveraging the concept
+ of locality.
+ As this technology is relatively new, only devices with Android 4.0 (API
+ level 14 or later) have this feature.
+\end_layout
+
+\begin_layout Standard
+To introduce the reasoning behind choosing to utilize Wi-Fi Direct technology
+ over other methods, two general scenarios where DiscoverFriends may be
+ used are examined: a user is connected to a local area network and a user
+ is not connected to one.
+ Lastly, this section ends with an analysis of the applicability of the
+ technology.
+\end_layout
+
+\begin_layout Subsubsection
+Connected to LAN
+\end_layout
+
+\begin_layout Standard
+For the first scenario, the user is connected to a LAN, so we utilize Android's
+ Network Service Discovery to detect other devices that can service DiscoverFrie
+nds.
+ After detecting which devices are currently running the application, a
+ UDP broadcast is sent to these devices.
+ However, a few devices such as some HTC devices block these broadcasts,
+ so a workaround for these exception cases is needed.
+ Here, Wi-Fi Direct is not necessary because of the presence of a wireless
+ network backbone.
+\end_layout
+
+\begin_layout Subsubsection
+Not Connected to LAN
+\end_layout
+
+\begin_layout Standard
+In a latter more probable scenario, the user enters a location where there
+ is no network infrastructure available.
+ For example, the user, Alice, goes to a park and wants to be able to communicat
+e to all her friends there.
+ Here, she can use the Wi-Fi Direct technology in DiscoverFriends to accomplish
+ this goal through a two-step process.
+\end_layout
+
+\begin_layout Enumerate
+The initiator discovers nearby devices and sets up the device, making the
+ user the group owner.
+\end_layout
+
+\begin_layout Enumerate
+Attempts to establish a one-to-many connection with all the discovered devices.
+\end_layout
+
+\begin_layout Standard
+For the purpose of this application, the group owner is set to be the server
+ and the connected devices to be the clients.
+ Once connected, the initiator is able to communicate to all its connected
+ clients using the channel managed by the WifiP2pManager.
+ Wi-Fi Direct is suitable for DiscoverFriends' assumptions because it leverages
+ the locality of this technology.
+ However, all this assumes that the initiator, as well as the friends, have
+ the Wi-Fi Direct functionality.
+ If the friends do not support Wi-Fi Direct, then this technology is not
+ suitable for the DiscoverFriends environment.
+ Although the initiator can set up his phone as a wireless access point,
+ the network name and passphrase to connect to the device, which is generated
+ by Android's WifiP2pManager, are randomly generated.
+ Also, note that how DiscoverFriends is designed, discovery of new friends
+ is not permitted unless the network is reinitialized.
+ This is not because of Wi-Fi Direct limitations but because of preventing
+ replay attacks.
+ Therefore, it is not possible for the initiator to provide his friends
+ with the access information beforehand, thwarting Wi-Fi Direct's usefulness
+ in the application.
+\end_layout
+
+\begin_layout Subsubsection
+Applicability
+\end_layout
+
+\begin_layout Standard
+Finally, the applicability and general drawbacks of Wi-Fi Direct is examined.
+ Aside from compatibility with legacy devices, Wi-Fi Direct draws significant
+ power from the Android device, so it is not feasible to keep Wi-Fi Direct
+ on for an extended time 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "k.-w._lim"
+
+\end_inset
+
+, which even the system warns the user when tries to enable the feature.
+ However, it is usable for DiscoverFriends because this application only
+ runs for a short period of time to exchange short messages.
+ In addition, the connection range is limited to 200 meters, but this is
+ a suitable distance for the application.
+\end_layout
+
+\begin_layout Subsection
+OSN Adaptors
+\end_layout
+
+\begin_layout Standard
+There were many OSN adaptors to choose from, where the main ones were Facebook,
+ Google+, and Twitter.
+ Here, DiscoverFriends implements the first two.
+\end_layout
+
+\begin_layout Subsubsection
+Facebook
+\end_layout
+
+\begin_layout Standard
+Facebook was integrated in DiscoverFriends in order to obtain a user's Facebook
+ friends using Graph API v2.0.
+ Unlike the username, which is found in the URL section of a user's Facebook
+ page, the ID is hidden away from the public is only known by Facebook friends
+ and the Facebook servers.
+ Therefore, by running a Graph API search query on the user's friends, the
+ corresponding GraphObject can be obtained, which can then be used in the
+ extraction of the user's friends' IDs.
+ These IDs will then be placed into the initiator's request Bloom filter.
+ Another Bloom filter is constructed by copying the previously constructed
+ Bloom filter, which contains the hashed friends' IDs, and appending onto
+ it, the user's own ID.
+ Note that the length of the friend list in the worst case for the expected
+ insertions.
+ With this length and a 2% false positive probability, the optimal size
+ of the Bloom filter is decided using 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:k"
+
+\end_inset
+
+.
+ Lastly, due to a recent upgrade to Graph API v2.0 on April 2014, Facebook
+ adds more security such that only the list of friends that use this application
+ is returned rather than the complete list.
+\end_layout
+
+\begin_layout Subsubsection
+Google+
+\end_layout
+
+\begin_layout Standard
+The solution is extended to support Google+.
+ Similar to Facebook, a user's ID is extrapolated using the Google+ API.
+ When using both OSNs, the two IDs representing a user is XORed to generate
+ a new ID.
+ This new ID can only be identified by the initiator and the target who
+ is the initiator's friend on both OSNs.
+ One issue is how to determine which friends meet this requirement.
+ Currently, the solution is to hard code some common friends in the system.
+ Later, it can be replaced by a smarter mechanism such as comparing the
+ name and email to infer the potential common friend.
+\end_layout
+
+\begin_layout Section
+Risk Analysis
+\end_layout
+
+\begin_layout Standard
+Risk analysis is done on two potential forms of network attack: replay attack
+ and eavesdropping by a common friend.
+ In the following attacks, let us consider the simplified scenario where
+ Alice is the initiator who connects to Bob.
+\end_layout
+
+\begin_layout Subsection
+Replay Attack
+\end_layout
+
+\begin_layout Standard
+In the case of a replay attack, we assume an adversary is able to intercept
+ and retransmit our application data.
+ One purpose of this attack may be to fraudulently establish a subsequent
+ connection between the adversary and the initiator’s targeted group of
+ friends for a malicious rendezvous.
+ Consider now, an adversary, Eve, that is eavesdropping and wants to use
+ that knowledge of the connection to communicate to Bob by posing as Alice.
+ In order for Eve to execute a successful replay attack, she must firstly
+ be authenticated by Bob.
+\end_layout
+
+\begin_layout Standard
+For authentication, DiscoverFriends uses certificates, which have a limited
+ validity period, so if Eve tries to replay data that contains an expired
+ certificate, Bob will know.
+ Procedure for certificate revocation for the self-organized public-key
+ management system is described in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "k._sahadevaiah"
+
+\end_inset
+
+.
+ As a result, any attempts at replay attacks are thwarted.
+\end_layout
+
+\begin_layout Standard
+Although man-in-the-middle attacks are prominent in self-signed certificates
+ as a user does not have the certificate in advance for validation, these
+ malicious attempts are handled by proper detection of a compromised node
+ using the trust graph in the chosen key management scheme.
+ In other words, building a trust graph during the initial insecure network
+ initialization phase helps enable users to determine valid certificates
+ provided by the nodes contributing to the master graph.
+ This scheme's strong chain of trust also protects against Sybil attacks,
+ where an attacker can take on multiple identities in attempt to subvert
+ the reputation system of a peer-to-peer network.
+ Therefore, self-signed certificates by Eve will not be present in each
+ node's CR, successfully preventing man-in-the-middle attacks.
+\end_layout
+
+\begin_layout Subsection
+Eavesdropping by a Common Friend
+\end_layout
+
+\begin_layout Standard
+When a common friend, Eve, eavesdrops, she is able to identify the initiator
+ because the hashed ID of one of his friends will come out as a positive
+ match.
+ Without any additional security measurements, Eve is able to decrypt subsequent
+ messages sent from Alice using AES with the matching ID from her friend
+ list as the key.
+ One such approach is that instead of using the ID of the initiator as the
+ key for AES, the application uses the public key obtained from the certificate.
+ In the case of DiscoverFriends, an additional security measurement is present
+ as the AES key is encrypted using public-key cryptography.
+ As a result, the communication between initiator and target will be private,
+ preventing future eavesdropping.
+\end_layout
+
+\begin_layout Standard
+It is also important to note that aside from common friends, bystanders
+ may be able to guess who the initiator is.
+ This leads to guessing the respective ID as it may be mnemonic such as
+ a variation of the initiator's name.
+ Similar to the case of the common friend, the extra security measurement
+ of using the public key is necessary to hide the conversation.
+\end_layout
+
+\begin_layout Section
+Performance Evaluation
+\end_layout
+
+\begin_layout Subsection
+Experiment Setup
+\end_layout
+
+\begin_layout Standard
+To evaluate the performance of DiscoverFriends, two Android 4.0+ devices
+ were used.
+ As mentioned earlier, although the application supports legacy devices,
+ using any versions older than 4.0 will undermine the application's purpose
+ as an Android randomly generated passphrase is needed to be known to Wi-Fi
+ Direct unsupported phones.
+\end_layout
+
+\begin_layout Standard
+Here, the computational and storage costs are compared for three systems:
+ DiscoverFriends' using hybrid encryption, DiscoverFriends using only AES
+ with Bloom filters, and a system using prearranged ABE policy trees.
+ In the following two sections, it is shown that using Bloom filters and
+ a hybrid encryption technique performs the best over the latter two systems.
+\end_layout
+
+\begin_layout Subsection
+Computational Cost
+\end_layout
+
+\begin_layout Standard
+Because encryption and decryption are computationally costly especially
+ in a MANET environment, energy-efficient approaches in applications are
+ necessary.
+ The system using ABE keys has high computational cost due to its large
+ keys versus DiscoverFriends using only AES with Bloom filters approach,
+ which cuts down the cost to a fraction.
+ However, this approach trades off security for efficiency.
+ Here, security suffers due to by the small chance of false positives using
+ Bloom filters, whereas the advantage of using ABE is its stronger protection
+ scheme.
+ The cost of encryption and key generation for ABE scales with the number
+ of attributes and the complexity of the access policy.
+ Note that performing offline key generation can speed up initial computational
+ cost while encryption must be done online.
+ Therefore, a common approach of using hybrid cryptosystems such as that
+ in the final form of DiscoverFriends lowers computational cost by only
+ using the slow asymmetric algorithm on keys rather than on messages while
+ maintaining the necessary security features.
+\end_layout
+
+\begin_layout Subsection
+Storage Cost
+\end_layout
+
+\begin_layout Standard
+The amount of storage used in DiscoverFriends is proportional to the subset
+ of successfully connected friends.
+ It is shown that DiscoverFriends' storage cost is significantly less than
+ the other.
+ In an experimentation, two initiators who have 100 and 1,000 friends, respectiv
+ely only want to communicate to a subset of 10 friends.
+ Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "keystore_size"
+
+\end_inset
+
+ depicts this experiment, and it is shown that DiscoverFriends' approach
+ requires less storage space compared to the other approach.
+ The reasoning behind this is because the Bloom filter prunes the initiator's
+ full friend list to a targeted group of friends.
+ However, not everyone in the list may be present or choose to respond to
+ the initiator.
+ As a result, only the keys corresponding to the connected friends are stored
+ versus the entire set of ABE keys the other model has to store.
+ Because ABE generates an ASK for each user, the number of keys corresponding
+ to each user in an OSN may amount in the thousands, thus it is not practical.
+ Furthermore, under this approach, the social network servers would know
+ the keys and can defy attempts of covered rendezvous.
+ From this, the effectiveness of using Bloom filters come to light as they
+ only manage which users can decrypt the message using a bit array structure
+ while cutting OSN servers out of the picture.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+KeyStore size comparison in KB
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "keystore_size"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="3" columns="3">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+100 friends
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1000 friends
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Use of Bloom Filters
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4.52 KB
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4.52 KB
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+No Use of Bloom Filters (e.g.
+ ABE)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+44.9 KB
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+449 KB
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Another measurement was done on the sizes of DiscoverFriends' different
+ types of network packets: setup, certificate update, and normal.
+ In detail, the setup packet consists of the user's certificate and two
+ Bloom filters, where the parameters for the number of expected insertions
+ 
+\begin_inset Formula $n$
+\end_inset
+
+ is 1000 and the false positive probability 
+\begin_inset Formula $p$
+\end_inset
+
+ is 0.02.
+ The normal message has a maximum limit of 160 characters, which gets encrypted
+ using AES-128.
+ These measurements are shown in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "packet_size"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Total packet sizes in bytes
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "packet_size"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="2">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Total packet size
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Setup
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2,516.59 bytes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Certificate Update
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+481 bytes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Normal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+176 bytes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Related Work
+\end_layout
+
+\begin_layout Subsection
+Encryption Mechanisms
+\end_layout
+
+\begin_layout Standard
+Attribute-based encryption (ABE) is an alternative method of discovering
+ friends in place of Bloom filters.
+ Users of ABE create three different types of keys: ABE public key (APK),
+ ABE master secret key (AMSK), and ABE secret key (ASK).
+ The first two are generated on a user bases while the third is created
+ per friend.
+ The uses of these keys are summarized as follows: APK is for encryption,
+ AMSK is for secret keys generation, ASK is for associating the users set
+ of attributes.
+ There are two types of ABE schemes: Ciphertext-Policy and Key-Policy.
+ The Ciphertext Policy Attribute-Based Encryption (CP-ABE) consists of four
+ steps: Setup, Encrypt, KeyGen, and Decrypt.
+ Similar to Bloom filters, ABE targets a specific group that can decode
+ the encrypted message.
+ Through this scheme, only a subset of all users with attributes that match
+ the access policy can decrypt the messages.
+ Synchronization is enabled using a key chain mechanism.
+ The second scheme, Key-Policy Attribute-Based Encryption (KP-ABE) is similar
+ to the first scheme, consisting of the same four algorithms but differs
+ on attribute association.
+ Rather than associating the attributes with the user, KP-ABE instead associates
+ with the plaintext message.
+ In other words, the decryption policy enables only those users who match
+ the ciphertext attributes, which are associated with a plaintext message.
+ In addition, there are different flavors of ABE systems such as token-based
+ ABE (tk-ABE) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "m._j._hinek"
+
+\end_inset
+
+, which protects against key cloning.
+\end_layout
+
+\begin_layout Subsection
+Applications
+\end_layout
+
+\begin_layout Standard
+Unlike LBS 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "k._p._puttaswamy"
+
+\end_inset
+
+, DiscoverFriends does not need to know the user's location with GPS.
+ The application exploits the broadcast nature of wireless communication
+ to directly find nearby friends without the location information.
+ Also, the user does not expose location information to any server in DiscoverFr
+iends, which completely avoids the potential privacy leak.
+\end_layout
+
+\begin_layout Standard
+In year 2009, a social network application called Safebook 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "l._a._cutillo"
+
+\end_inset
+
+ was implemented.
+ It adopted a decentralized architecture and capitalized on the trust relationsh
+ips that existed outside of social networks.
+ Like DiscoverFriends, it addresses the concern where an omniscient service
+ provider such as Facebook or LinkedIn can intercept and potentially monitor
+ interactions between OSN users, essentially nullifying certain privacy
+ policies.
+ Unlike DiscoverFriends however, this application is not based off a MANET
+ environment.
+\end_layout
+
+\begin_layout Standard
+In year 2012, an algorithm for social networking on OLSR MANET utilizing
+ Delayed Tolerant Network (DTN) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "t._sanguankotchakom"
+
+\end_inset
+
+ was implemented.
+ The core idea was to discover friends based on similar interest within
+ the user's neighborhood.
+ The solution realized that the use of Cosine Similarity as the similarity
+ metric yielded the highest number of similar interest matching.
+ Unlike this approach, DiscoverFriends' algorithm has the list of friends
+ already and instead, focuses on how to communicate to them securely assuming
+ they are nearby.
+\end_layout
+
+\begin_layout Standard
+Recently in 2014, an idea to build symmetric private information retrieval
+ (PIR) systems using encrypted Bloom filters was conceived 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "m._marlinspike"
+
+\end_inset
+
+.
+ Rather than putting the user's ID in the Bloom filter as in DiscoverFriends,
+ a RSA signature of each user is placed instead.
+ A client wanting to query a local Bloom filter constructs a blinded query
+ using David Chaum's blinded signature scheme, which then gets signed by
+ the server and passed back.
+ Receiving this, the client proceeds to unblind the query to reveal the
+ server's RSA signature for the targeted client and checks if it exists
+ within its local Bloom filter.
+ However, this approach like DiscoverFriends will fail with a reasonably
+ large user base as the Bloom filter sizes will be too large and inefficient
+ to transmit.
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+In this project, a Wi-Fi-based solution, DiscoverFriends, is designed to
+ find nearby OSN friends without disclosing one's location information to
+ OSN servers, which eliminates the potential privacy issue in using the
+ LBS of OSNs.
+ The use of Bloom filters-based message exchange and a hybrid encryption
+ system with a self-organized public-key management enables confidentiality
+ and authentication while providing higher security by bypassing OSN servers.
+ DiscoverFriends further obscures user ID information by combining multiple
+ OSNs, effectively protecting messages from being identified by any single
+ OSN.
+ Under this model, it successfully prevents the effectiveness of eavesdropping
+ in wireless communications as described by the risk analysis under two
+ security threat models.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "resources"
+options "IEEEtran"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
