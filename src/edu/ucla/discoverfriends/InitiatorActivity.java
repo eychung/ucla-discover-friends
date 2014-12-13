@@ -21,6 +21,9 @@ import java.util.Collections;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -70,6 +73,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 	// UI
 	private Button buttonInitializeManet;
 	private EditText editMessage;
+	private ProgressDialog progressDialog;
 
 	private boolean isWifiP2pEnabled = false;
 	private boolean retryChannel = false;
@@ -274,6 +278,18 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					serviceIntent.putExtras(extras);
 					startService(serviceIntent);
 
+					// Wait until all intent requests in service queue finishes.
+					progressDialog = new ProgressDialog(InitiatorActivity.this);
+					progressDialog.setTitle(Constants.PROGRESS_DIALOG_CONNECTING_ALL_PEERS_TITLE);
+					progressDialog.setMessage(Constants.PROGRESS_DIALOG_CONNECTING_ALL_PEERS);
+					progressDialog.setIndeterminate(false);
+					progressDialog.setMax(100);
+					progressDialog.setCancelable(true);
+					progressDialog.show();
+					while (isMyServiceRunning(DataTransferService.class)) {
+					}
+					progressDialog.dismiss();
+					
 					// Once all peers have sent their certificates, send the set of collected certificates to them.
 					try {
 						ArrayList<X509Certificate> list = KeyRepository.getCertificateList(getFilesDir().getAbsolutePath(), getKeystorePassword());
@@ -580,6 +596,16 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 
 	private SetupNetworkPacket createSnp(BloomFilter<String> bf, BloomFilter<String> bfp, byte[] ecf) {
 		return new SetupNetworkPacket(bf, bfp, ecf);
+	}
+	
+	private boolean isMyServiceRunning(Class<?> serviceClass) {
+	    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+	    for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+	        if (serviceClass.getName().equals(service.service.getClassName())) {
+	            return true;
+	        }
+	    }
+	    return false;
 	}
 
 

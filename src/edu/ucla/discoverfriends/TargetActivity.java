@@ -382,7 +382,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 
 					byte[] symmetricKey = PKE.decrypt(getPrivateKey(), encryptedSymmetricKey);
 					byte[] message = AES.decrypt(symmetricKey, encryptedMessage);
-					Toast.makeText(TargetActivity.this, Utils.byteToString(message), Toast.LENGTH_SHORT).show();
+					Toast.makeText(TargetActivity.this, senderIp + ": " + Utils.byteToString(message), Toast.LENGTH_SHORT).show();
 				} catch (CertificateException e) {
 					Log.e(TAG, e.getMessage());
 				} catch (IOException e) {

@@ -1,8 +1,6 @@
 package edu.ucla.common;
 
 public class Constants {
-	public static final String TEST = "test";
-	
 	// Identifier strings
 	public static final String USER_LABEL = "user";
 	public static final String USER_INITIATOR = "initiator";
@@ -53,9 +51,7 @@ public class Constants {
 	public static final String EXTRAS_SYMMETRIC_KEY_ENCODED = "symmetric_key_encoded"; // byte[]
 	public static final String EXTRAS_USER_ID = "user_id"; // String
 	
-	public static final String EXTRAS_HOST = "host";
-	
-	public static final String EXTRAS_DEVICE_ADDRESS = "go_client";
-	public static final String EXTRAS_GROUP_OWNER_PORT = "go_port";
-	
+	// ProgressDialog strings
+	public static final String PROGRESS_DIALOG_CONNECTING_ALL_PEERS = "Waiting till all peers to reply.";
+	public static final String PROGRESS_DIALOG_CONNECTING_ALL_PEERS_TITLE = "Receiving Peer Replies";
 }
