@@ -3,15 +3,20 @@ package edu.ucla.discoverfriends;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -83,6 +88,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 	private byte[] ecf = null;
 	private SetupNetworkPacket snp = null;
 	private byte[] currentSymmetricKey = null;
+	private ArrayList<InetAddress> targetsIpList = new ArrayList<InetAddress>();
 
 	public IntentFilter protocolIntentFilter = null; 
 	public InitiatorBroadcastReceiver protocolReceiver;
@@ -179,6 +185,14 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 	public void setCurrentSymmetricKey(byte[] currentSymmetricKey) {
 		this.currentSymmetricKey = currentSymmetricKey;
 	}
+	
+	public ArrayList<InetAddress> getTargetsIpList() {
+		return targetsIpList;
+	}
+
+	public void setTargetsIpList(ArrayList<InetAddress> targetsIpList) {
+		this.targetsIpList = targetsIpList;
+	}
 
 
 	public static class StringFunnel implements Funnel<String> {
@@ -258,6 +272,25 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					serviceIntent.setAction(Constants.NETWORK_INITIATOR_SETUP);
 					serviceIntent.putExtras(extras);
 					startService(serviceIntent);
+
+					// Once all peers have sent their certificates, send the set of collected certificates to them.
+					try {
+						ArrayList<X509Certificate> list = KeyRepository.getCertificateList(getFilesDir().getAbsolutePath(), getKeystorePassword());
+						for (int i = 0; i < targetsIpList.size(); i++) {
+							serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
+							extras = new Bundle();
+							extras.putString(Constants.EXTRAS_USER_ID, getUserId());
+							extras.putSerializable(Constants.EXTRAS_SENDER_IP, targetsIpList.get(i).getHostAddress());
+							extras.putSerializable(Constants.EXTRAS_CERTIFICATE_LIST, list);
+							serviceIntent.setAction(Constants.NETWORK_INITIATOR_SETUP_CERTIFICATE_LIST);
+							serviceIntent.putExtras(extras);
+							startService(serviceIntent);
+						}
+					} catch (IOException e) {
+						Log.e(TAG, e.getMessage());
+					} catch (KeyStoreException e) {
+						Log.e(TAG, e.getMessage());
+					}
 					
 					setPostNetworkInitializationView();
 				}
@@ -486,7 +519,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 			fragmentDetails.removeView();
 		}
 	}
-	
+
 	public void setPostNetworkInitializationView() {
 		buttonInitializeManet.setVisibility(View.INVISIBLE);
 		editMessage.setVisibility(View.VISIBLE);
@@ -562,6 +595,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 				byte[] ecf = intent.getExtras().getByteArray(Constants.EXTRAS_ENCRYPTED_CERTIFICATE);
 				String senderIp = intent.getExtras().getString(Constants.EXTRAS_SENDER_IP);
 				try {
+					targetsIpList.add(InetAddress.getByName(senderIp));
 					X509Certificate crt;
 					if (intent.getAction().equals(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED)) {
 						crt = decryptCertificate(ecf, Utils.charToByte(getUserId().toCharArray()));
@@ -575,6 +609,8 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 				} catch (CertificateExpiredException e) {
 					Log.e(TAG, e.getMessage());
 				} catch (CertificateNotYetValidException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (UnknownHostException e) {
 					Log.e(TAG, e.getMessage());
 				} catch (Exception e) {
 					Log.e(TAG, e.getMessage());

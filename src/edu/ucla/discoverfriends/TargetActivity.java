@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -33,7 +34,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
-import edu.ucla.discoverfriends.DataReceiverService.TargetSetupTask;
+import edu.ucla.discoverfriends.DataReceiverService.TargetSetupCertificateListTask;
+import edu.ucla.discoverfriends.DataReceiverService.TargetSetupSnpTask;
 import edu.ucla.encryption.AES;
 import edu.ucla.encryption.KeyRepository;
 import edu.ucla.encryption.PKE;
@@ -59,6 +61,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 	private String keystorePassword = null;
 	private PrivateKey privateKey = null;
 	private SetupNetworkPacket snp = null;
+	private String hashedInitiatorUid = "";
 
 	public IntentFilter protocolIntentFilter = null; 
 	public TargetBroadcastReceiver protocolReceiver;
@@ -116,6 +119,14 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 		this.snp = snp;
 	}
 
+	public String getHashedInitiatorUid() {
+		return hashedInitiatorUid;
+	}
+
+	public void setHashedInitiatorUid(String hashedInitiatorUid) {
+		this.hashedInitiatorUid = hashedInitiatorUid;
+	}
+	
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -278,15 +289,15 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 			progressDialog.dismiss();
 		}
 
-		// Target prepares to accept setup message passed by the initiator.
 		if (!group.isGroupOwner()) {
-			TargetSetupTask targetSetupTask = new DataReceiverService.TargetSetupTask(TargetActivity.this) {
+			// Target prepares to accept setup message passed by the initiator.
+			TargetSetupSnpTask targetSetupSnpTask = new DataReceiverService.TargetSetupSnpTask(TargetActivity.this) {
 				@Override
 				public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid) {
-					// Finish up network initialization phase.
-					setPostNetworkInitializationView();
 					setSnp(snp);
+					setHashedInitiatorUid(hashedInitiatorUid);
 					try {
+						// Stores initiator's certificate into own keystore.
 						byte[] encryptedCertificate = getSnp().getEcf();
 						byte[] cf = AES.decrypt(Utils.charToByte(hashedInitiatorUid.toCharArray()), encryptedCertificate);
 						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cf);
@@ -307,8 +318,38 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 						Log.e(TAG, e.getMessage());
 					}
 				}
+
+				@Override
+				public void receiveData(byte[] encryptedCrtList) {
+				}
 			};
-			targetSetupTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId());
+			targetSetupSnpTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId());
+			
+			// Target prepares to accept certificate list passed by the initiator.
+			TargetSetupCertificateListTask targetSetupCertificateListTask = new DataReceiverService.
+					TargetSetupCertificateListTask(TargetActivity.this) {
+				@Override
+				public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid) {
+				}
+				
+				@Override
+				public void receiveData(byte[] encryptedCrtList) {
+					// Uses initiator's ID to decrypt the encrypted list of certificates.
+					try {
+						byte[] cfList = AES.decrypt(Utils.charToByte(getHashedInitiatorUid().toCharArray()), encryptedCrtList);
+						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cfList);
+						ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+						ArrayList<X509Certificate> crtList = (ArrayList<X509Certificate>) inputStream.readObject();
+						KeyRepository.storeCertificateList(crtList, getFilesDir().getAbsolutePath(), getKeystorePassword());
+					} catch (Exception e) {
+						Log.e(TAG, e.getMessage());
+					}
+				}
+			};
+			targetSetupCertificateListTask.execute();
+			
+			// Finish initialization phase.
+			setPostNetworkInitializationView();
 		}
 	}
 
@@ -319,6 +360,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 
 	public interface CallbackReceiver {
 		public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid);
+		public void receiveData(byte[] encryptedCrtList);
 	}
 
 	public class TargetBroadcastReceiver extends BroadcastReceiver {

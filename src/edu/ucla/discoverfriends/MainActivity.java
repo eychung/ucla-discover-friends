@@ -167,9 +167,9 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 			String keystorePassword = Utils.generateRandomKeystorePassword();
 			this.setKeystorePassword(keystorePassword);
 			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath(), this.getKeystorePassword());
-			PrivateKey privatekey = Certificate.createUserAndStoreCertificate(
+			PrivateKey pkey = Certificate.createUserAndStoreCertificate(
 					this.getUserId(), getFilesDir().getAbsolutePath(), this.getKeystorePassword());
-			this.setPrivateKey(privateKey);
+			this.setPrivateKey(pkey);
 			Log.i(TAG, "Created local keystore.");
 		} catch (GeneralSecurityException e) {
 			Log.e(TAG, e.getMessage());

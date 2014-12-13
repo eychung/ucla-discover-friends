@@ -28,8 +28,16 @@ import edu.ucla.discoverfriends.TargetActivity.CallbackReceiver;
 import edu.ucla.encryption.AES;
 
 /**
- * TargetSetupTask is an AsyncTask, which can only be run once. Note that,
- * it can be called again by making a new instance.
+ * TargetSetupSnpTask and TargetSetupCertificateListTask are AsyncTasks, which
+ * can only be run once. Note that, it can be called again by making a new instance.
+ * 
+ * This class also should not perform any decryption except for the case where
+ * the receiver needs to initially decrypt a packet to determine whether to
+ * continue communication with the initiator.
+ */
+/* TODO: May have to change it so the class performs decryption as the group
+ * owner is unable to remove peers from a group in Wi-Fi Direct without
+ * reestablishing the group.
  */
 public class DataReceiverService extends IntentService {
 
@@ -183,19 +191,18 @@ public class DataReceiverService extends IntentService {
 	}
 
 	/**
-	 * TargetSetupTask is run at the network initialization phase. Target
-	 * receives a SetupNetworkPacket from initiator and sends back an
-	 * encrypted certificate.
+	 * This class is run at the network initialization phase. Target receives a
+	 * SetupNetworkPacket from initiator and sends back an encrypted certificate.
 	 * 
 	 * Decryption happens here to check for sender's authentication before
 	 * sending back the target's certificate. Normally, decryption happens
 	 * at the activity level rather than the network level.
 	 */
-	public static abstract class TargetSetupTask extends AsyncTask<Object, Void, Pair<SetupNetworkPacket, String>> implements CallbackReceiver {
+	public static abstract class TargetSetupSnpTask extends AsyncTask<Object, Void, Pair<SetupNetworkPacket, String>> implements CallbackReceiver {
 
 		Activity activity;
 		
-		public TargetSetupTask(Activity activity) {
+		public TargetSetupSnpTask(Activity activity) {
 			this.activity = activity;
 		}
 		
@@ -279,7 +286,7 @@ public class DataReceiverService extends IntentService {
 					DatagramPacket sendPacket = new DatagramPacket(ecf, ecf.length, packet.getAddress(), packet.getPort());
 					socket.send(sendPacket);
 					Log.i(TAG, "Sent encrypted certificate to initiator.");
-
+					
 					socket.close();
 					return new Pair<SetupNetworkPacket, String>(snp, hashedInitiatorUid);
 				}
@@ -302,6 +309,57 @@ public class DataReceiverService extends IntentService {
 		@Override
 		protected void onPostExecute(Pair<SetupNetworkPacket, String> pair) {
 			receiveData(pair.first, pair.second);
+		}
+	}
+	
+	/**
+	 * This class receives an encrypted list of certificate.
+	 */
+	public static abstract class TargetSetupCertificateListTask extends AsyncTask<Void, Void, byte[]> implements CallbackReceiver {
+
+		Activity activity;
+		
+		public TargetSetupCertificateListTask(Activity activity) {
+			this.activity = activity;
+		}
+		
+		public abstract void receiveData(byte[] encryptedCrtList);
+		
+		@Override
+		protected byte[] doInBackground(Void... params) {
+			try {
+				DatagramSocket socket = new DatagramSocket(Constants.PORT);
+
+				while (true) {
+					// Wait to receive certificate list from initiator.
+					byte[] data = new byte[4];
+					DatagramPacket packet = new DatagramPacket(data, data.length);
+					socket.receive(packet);
+
+					int byteCount = 0;
+					// byte[] -> int
+					for (int i = 0; i < 4; ++i) {
+						byteCount |= (data[3-i] & 0xff) << (i << 3);
+					}
+
+					// From above, know the length of the payload.
+					byte[] packetSize = new byte[byteCount];
+					packet = new DatagramPacket(packetSize, packetSize.length);
+					socket.receive(packet);
+
+					return packet.getData();
+				}
+			} catch (IOException e) {
+				Log.e(TAG, e.getMessage());
+			} catch (Exception e) {
+				Log.e(TAG, e.getMessage());
+			}
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(byte[] encryptedCrtList) {
+			receiveData(encryptedCrtList);
 		}
 	}
 

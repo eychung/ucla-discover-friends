@@ -19,16 +19,17 @@ public class Constants {
 	public static final String INITIATOR_ALIAS = "initiator";
 	public static final String KEYSTORE_NAME = "user.keystore";
 	
-	// Intent extras names
-	public static final String NETWORK_INITIATOR_SETUP = "edu.ucla.discoverfriends.NETWORK_INITIATOR_SETUP";
-	public static final String NETWORK_TARGET_SEND_CERTIFICATE = "edu.ucla.discoverfriends.NETWORK_TARGET_SEND_CERTIFICATE";
-	public static final String NETWORK_INITIATOR_KEY_AND_MESSAGE = "edu.ucla.discoverfriends.NETWORK_INITIATOR_MESSAGE_AND_KEY";
-	public static final String NETWORK_TARGET_MESSAGE = "edu.ucla.discoverfriends.NETWORK_INITIATOR_MESSAGE";
+	// IntentService action names
 	public static final String NETWORK_INITIATOR_GET_ENCRYPTED_CERTIFICATE = "network_initiator_get_encrypted_certificate";
+	public static final String NETWORK_INITIATOR_KEY_AND_MESSAGE = "edu.ucla.discoverfriends.NETWORK_INITIATOR_MESSAGE_AND_KEY";
 	public static final String NETWORK_INITIATOR_MESSAGE_LISTENER = "network_initiator_message_listener";
+	public static final String NETWORK_INITIATOR_SETUP = "edu.ucla.discoverfriends.NETWORK_INITIATOR_SETUP";
+	public static final String NETWORK_INITIATOR_SETUP_CERTIFICATE_LIST = "edu.ucla.discoverfriends.NETWORK_INITIATOR_SETUP_CERTIFICATE_LIST";
+	public static final String NETWORK_TARGET_MESSAGE = "edu.ucla.discoverfriends.NETWORK_INITIATOR_MESSAGE";
 	public static final String NETWORK_TARGET_MESSAGE_LISTENER = "network_target_message_listener";
+	public static final String NETWORK_TARGET_SEND_CERTIFICATE = "edu.ucla.discoverfriends.NETWORK_TARGET_SEND_CERTIFICATE";
 	
-	// Broadcast intent names
+	// Broadcast (received) intent names
 	public static final String NETWORK_INITIATOR_GET_ENCRYPTED_CERTIFICATE_RECEIVED = "network_initiator_get_encrypted_certificate_received";
 	public static final String NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED = "network_initiator_get_setup_encrypted_certificate_received";
 	public static final String NETWORK_INITIATOR_MESSAGE_LISTENER_RECEIVED = "network_initiator_message_listener_received";
@@ -36,6 +37,7 @@ public class Constants {
 	
 	// Intent extras strings
 	public static final String EXTRAS_CERTIFICATE = "certificate"; // X509Certificate
+	public static final String EXTRAS_CERTIFICATE_LIST = "certificate_list"; // ArrayList<X509Certificate>
 	public static final String EXTRAS_ENCRYPTED_CERTIFICATE = "encrypted_certificate"; // byte[]
 	public static final String EXTRAS_ENCRYPTED_GENERAL_KEY = "general_key"; // byte[]
 	public static final String EXTRAS_ENCRYPTED_MESSAGE = "encrypted_message"; // byte[]
