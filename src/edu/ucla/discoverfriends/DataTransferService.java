@@ -9,7 +9,9 @@ import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 
@@ -75,84 +77,85 @@ public class DataTransferService extends IntentService {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				socket.setBroadcast(true);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
-
-				// Broadcast message.
-				ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
-				ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-				outputStream.writeObject(intent.getExtras().getSerializable(Constants.EXTRAS_SNP));
-				outputStream.flush();
-				byte[] payload = byteStream.toByteArray();
-				int byteCount = payload.length;
-				byte[] payloadSize = new byte[4];
-
-				// int -> byte[]
-				for (int i = 0; i < 4; ++i) {
-					int shift = i << 3; // i * 8
-					payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
-				}
-
-				// Send the payload size.
-				DatagramPacket packet = new DatagramPacket(
-						payloadSize, 4, getBroadcastAddress(), Constants.PORT);
-				socket.send(packet);
-
-				// Send the payload.
-				packet = new DatagramPacket(
-						payload, payload.length, getBroadcastAddress(), Constants.PORT);
-				socket.send(packet);
-				Log.i(TAG, "Broadcasted server setup message.");
-
-				// Wait for connected clients to send back their own encrypted certificate and MAC address until SOCKET_TIMEOUT.
-				byte[] buf = new byte[Constants.BYTE_ARRAY_SIZE];
 				try {
-					while (true) {
-						// Get byte size of certificate.
-						byte[] data = new byte[4];
-						packet = new DatagramPacket(data, data.length);
-						socket.receive(packet);
-						int ecfSize = 0;
-						for (int i = 0; i < 4; ++i) {
-							ecfSize |= (data[3-i] & 0xff) << (i << 3);
-						}
-						
-						// Get byte size of MAC address.
-						data = new byte[4];
-						packet = new DatagramPacket(data, data.length);
-						socket.receive(packet);
-						int macAddressSize = 0;
-						for (int i = 0; i < 4; ++i) {
-							macAddressSize |= (data[3-i] & 0xff) << (i << 3);
-						}
-						
-						// Get encrypted certificate.
-						byte[] packetSize = new byte[ecfSize];
-						packet = new DatagramPacket(packetSize, packetSize.length);
-						socket.receive(packet);
-						byte[] encryptedCertificate = packet.getData();
-						Log.i(TAG, "Received encrypted certificate.");
-						
-						// Get MAC address.
-						packetSize = new byte[macAddressSize];
-						packet = new DatagramPacket(packetSize, packetSize.length);
-						socket.receive(packet);
-						byte[] macAddress = packet.getData();
-						Log.i(TAG, "Received MAC address.");
+					// Broadcast message.
+					ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
+					ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
+					outputStream.writeObject(intent.getExtras().getSerializable(Constants.EXTRAS_SNP));
+					outputStream.flush();
+					byte[] payload = byteStream.toByteArray();
+					int byteCount = payload.length;
+					byte[] payloadSize = new byte[4];
 
-						// Broadcast packet back to calling activity.
-						intent = new Intent();
-						intent.setAction(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED);
-						intent.putExtra(Constants.EXTRAS_ENCRYPTED_CERTIFICATE, encryptedCertificate);
-						intent.putExtra(Constants.EXTRAS_MAC_ADDRESS, Utils.byteToString(macAddress));
-						intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
-						sendBroadcast(intent);
+					// int -> byte[]
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
 					}
-				} catch (SocketTimeoutException e) {
-					Log.d(TAG, "Receive timed out.");
+
+					// Send the payload size.
+					DatagramPacket packet = new DatagramPacket(
+							payloadSize, 4, getBroadcastAddress(), Constants.PORT);
+					socket.send(packet);
+
+					// Send the payload.
+					packet = new DatagramPacket(
+							payload, payload.length, getBroadcastAddress(), Constants.PORT);
+					socket.send(packet);
+					Log.i(TAG, "Broadcasted server setup message.");
+
+					// Wait for connected clients to send back their own encrypted certificate and MAC address until SOCKET_TIMEOUT.
+					try {
+						while (true) {
+							// Get byte size of certificate.
+							byte[] data = new byte[4];
+							packet = new DatagramPacket(data, data.length);
+							socket.receive(packet);
+							int ecfSize = 0;
+							for (int i = 0; i < 4; ++i) {
+								ecfSize |= (data[3-i] & 0xff) << (i << 3);
+							}
+
+							// Get byte size of MAC address.
+							data = new byte[4];
+							packet = new DatagramPacket(data, data.length);
+							socket.receive(packet);
+							int macAddressSize = 0;
+							for (int i = 0; i < 4; ++i) {
+								macAddressSize |= (data[3-i] & 0xff) << (i << 3);
+							}
+
+							// Get encrypted certificate.
+							byte[] packetSize = new byte[ecfSize];
+							packet = new DatagramPacket(packetSize, packetSize.length);
+							socket.receive(packet);
+							byte[] encryptedCertificate = packet.getData();
+							Log.i(TAG, "Received encrypted certificate.");
+
+							// Get MAC address.
+							packetSize = new byte[macAddressSize];
+							packet = new DatagramPacket(packetSize, packetSize.length);
+							socket.receive(packet);
+							byte[] macAddress = packet.getData();
+							Log.i(TAG, "Received MAC address.");
+
+							// Broadcast packet back to calling activity.
+							intent = new Intent();
+							intent.setAction(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED);
+							intent.putExtra(Constants.EXTRAS_ENCRYPTED_CERTIFICATE, encryptedCertificate);
+							intent.putExtra(Constants.EXTRAS_MAC_ADDRESS, Utils.byteToString(macAddress));
+							intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
+							sendBroadcast(intent);
+						}
+					} catch (SocketTimeoutException e) {
+						Log.d(TAG, "Receive timed out.");
+					}
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
 				} finally {
 					socket.close();
 				}
-
-			} catch (IOException e) {
+			} catch (SocketException e) {
 				Log.e(TAG, e.getMessage());
 			}
 		}
@@ -164,44 +167,48 @@ public class DataTransferService extends IntentService {
 				InetAddress address = InetAddress.getByName(intent.getStringExtra(Constants.EXTRAS_SENDER_IP));
 				DatagramSocket socket = new DatagramSocket(Constants.PORT, address);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
+				try {
+					ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
+					ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
+					outputStream.writeObject(intent.getExtras().getSerializable(Constants.EXTRAS_CERTIFICATE_LIST));
+					outputStream.flush();
 
-				ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
-				ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-				outputStream.writeObject(intent.getExtras().getSerializable(Constants.EXTRAS_CERTIFICATE_LIST));
-				outputStream.flush();
+					String initiatorId = intent.getStringExtra(Constants.EXTRAS_USER_ID);
+					String hashedInitiatorUid = Utils.hash(initiatorId);
+					byte[] key = Utils.charToByte(hashedInitiatorUid.toCharArray());
+					byte[] crtList = byteStream.toByteArray();
+					byte[] encryptedCrtList = AES.encrypt(key, crtList);
 
-				String initiatorId = intent.getStringExtra(Constants.EXTRAS_USER_ID);
-				String hashedInitiatorUid = Utils.hash(initiatorId);
-				byte[] key = Utils.charToByte(hashedInitiatorUid.toCharArray());
-				byte[] crtList = byteStream.toByteArray();
-				byte[] encryptedCrtList = AES.encrypt(key, crtList);
+					int byteCount = encryptedCrtList.length;
+					byte[] payloadSize = new byte[4];
 
-				int byteCount = encryptedCrtList.length;
-				byte[] payloadSize = new byte[4];
+					// int -> byte[]
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					}
 
-				// int -> byte[]
-				for (int i = 0; i < 4; ++i) {
-					int shift = i << 3; // i * 8
-					payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					// Send the encrypted certificate list size.
+					DatagramPacket packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
+					socket.send(packet);
+
+					// Send the encrypted certificate list.
+					packet = new DatagramPacket(encryptedCrtList, encryptedCrtList.length, address, Constants.PORT);
+					socket.send(packet);
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (NoSuchAlgorithmException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (Exception e) {
+					Log.e(TAG, e.getMessage());
+				} finally {
+					socket.close();
 				}
-
-				// Send the encrypted certificate list size.
-				DatagramPacket packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
-				socket.send(packet);
-				
-				// Send the encrypted certificate list.
-				packet = new DatagramPacket(encryptedCrtList, encryptedCrtList.length, address, Constants.PORT);
-				socket.send(packet);
-				
-				socket.close();
-			} catch (IOException e) {
+			} catch (SocketException e) {
 				Log.e(TAG, e.getMessage());
-			} catch (NoSuchAlgorithmException e) {
-				Log.e(TAG, e.getMessage());
-			} catch (Exception e) {
+			} catch (UnknownHostException e) {
 				Log.e(TAG, e.getMessage());
 			}
-
 		}
 
 		// Initiator connects to a specific target and sends an encrypted key and encrypted message.
@@ -211,55 +218,60 @@ public class DataTransferService extends IntentService {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT, address);
 				socket.setBroadcast(true);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
+				try {
+					// Encrypt symmetric key with public key.
+					byte[] symmetricKey = intent.getByteArrayExtra(Constants.EXTRAS_SYMMETRIC_KEY_ENCODED);
+					PublicKey publicKey = (PublicKey) intent.getSerializableExtra(Constants.EXTRAS_PUBLIC_KEY);
+					byte[] encryptedKey = PKE.encrypt(publicKey, symmetricKey);
 
-				// Encrypt symmetric key with public key.
-				byte[] symmetricKey = intent.getByteArrayExtra(Constants.EXTRAS_SYMMETRIC_KEY_ENCODED);
-				PublicKey publicKey = (PublicKey) intent.getSerializableExtra(Constants.EXTRAS_PUBLIC_KEY);
-				byte[] encryptedKey = PKE.encrypt(publicKey, symmetricKey);
+					int byteCount = encryptedKey.length;
+					byte[] payloadSize = new byte[4];
 
-				int byteCount = encryptedKey.length;
-				byte[] payloadSize = new byte[4];
+					// int -> byte[]
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					}
 
-				// int -> byte[]
-				for (int i = 0; i < 4; ++i) {
-					int shift = i << 3; // i * 8
-					payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					// Send the encrypted key size.
+					DatagramPacket packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
+					socket.send(packet);
+
+					// Send the encrypted key.
+					packet = new DatagramPacket(encryptedKey, encryptedKey.length, address, Constants.PORT);
+					socket.send(packet);
+
+
+					// Encrypt message with AES.
+					String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
+					byte[] plaintext = Utils.charToByte(message.toCharArray());
+					byte[] encrypted = AES.encrypt(symmetricKey, plaintext);
+
+					byteCount = encrypted.length;
+					payloadSize = new byte[4];
+
+					// int -> byte[]
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					}
+
+					// Send the encrypted message size.
+					packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
+					socket.send(packet);
+
+					// Send the encrypted message.
+					packet = new DatagramPacket(encrypted, encrypted.length, address, Constants.PORT);
+					socket.send(packet);
+					Log.i(TAG, "Broadcasted initiator message.");
+				} catch (Exception e) {
+					Log.e(TAG, e.getMessage());
+				} finally {
+					socket.close();
 				}
-
-				// Send the encrypted key size.
-				DatagramPacket packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
-				socket.send(packet);
-
-				// Send the encrypted key.
-				packet = new DatagramPacket(encryptedKey, encryptedKey.length, address, Constants.PORT);
-				socket.send(packet);
-
-
-				// Encrypt message with AES.
-				String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
-				byte[] plaintext = Utils.charToByte(message.toCharArray());
-				byte[] encrypted = AES.encrypt(symmetricKey, plaintext);
-
-				byteCount = encrypted.length;
-				payloadSize = new byte[4];
-
-				// int -> byte[]
-				for (int i = 0; i < 4; ++i) {
-					int shift = i << 3; // i * 8
-					payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
-				}
-
-				// Send the encrypted message size.
-				packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
-				socket.send(packet);
-
-				// Send the encrypted message.
-				packet = new DatagramPacket(encrypted, encrypted.length, address, Constants.PORT);
-				socket.send(packet);
-
-				socket.close();
-				Log.i(TAG, "Broadcasted initiator message.");
-			} catch (Exception e) {
+			} catch (SocketException e) {
+				Log.e(TAG, e.getMessage());
+			} catch (UnknownHostException e) {
 				Log.e(TAG, e.getMessage());
 			}
 		}
@@ -271,46 +283,50 @@ public class DataTransferService extends IntentService {
 			try {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
+				try {
+					byte[] key = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_GENERAL_KEY);
+					byte[] encrypted = null;
+					// Encrypt message with AES.
+					if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE)) {
+						String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
+						byte[] plaintext = Utils.charToByte(message.toCharArray());
+						encrypted = AES.encrypt(key, plaintext);
+					}
 
-				byte[] key = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_GENERAL_KEY);
-				byte[] encrypted = null;
-				// Encrypt message with AES.
-				if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE)) {
-					String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
-					byte[] plaintext = Utils.charToByte(message.toCharArray());
-					encrypted = AES.encrypt(key, plaintext);
+					// Encrypt certificate with AES.
+					else if (intent.getAction().equals(Constants.NETWORK_TARGET_SEND_CERTIFICATE)) {
+						ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
+						ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
+						outputStream.writeObject(intent.getSerializableExtra(Constants.EXTRAS_CERTIFICATE));
+						outputStream.flush();
+						byte[] crt = byteStream.toByteArray();
+						encrypted = AES.encrypt(key, crt);
+					}
+
+					int byteCount = encrypted.length;
+					byte[] payloadSize = new byte[4];
+
+					// int -> byte[]
+					for (int i = 0; i < 4; ++i) {
+						int shift = i << 3; // i * 8
+						payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
+					}
+
+					// Send the encrypted message size.
+					DatagramPacket packet = new DatagramPacket(
+							payloadSize, 4, getBroadcastAddress(), Constants.PORT);
+					socket.send(packet);
+
+					// Send the encrypted message.
+					packet = new DatagramPacket(
+							encrypted, encrypted.length, getBroadcastAddress(), Constants.PORT);
+					socket.send(packet);
+				} catch (Exception e) {
+					Log.e(TAG, e.getMessage());
+				} finally {
+					socket.close();
 				}
-
-				// Encrypt certificate with AES.
-				else if (intent.getAction().equals(Constants.NETWORK_TARGET_SEND_CERTIFICATE)) {
-					ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
-					ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-					outputStream.writeObject(intent.getSerializableExtra(Constants.EXTRAS_CERTIFICATE));
-					outputStream.flush();
-					byte[] crt = byteStream.toByteArray();
-					encrypted = AES.encrypt(key, crt);
-				}
-
-				int byteCount = encrypted.length;
-				byte[] payloadSize = new byte[4];
-
-				// int -> byte[]
-				for (int i = 0; i < 4; ++i) {
-					int shift = i << 3; // i * 8
-					payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
-				}
-
-				// Send the encrypted message size.
-				DatagramPacket packet = new DatagramPacket(
-						payloadSize, 4, getBroadcastAddress(), Constants.PORT);
-				socket.send(packet);
-
-				// Send the encrypted message.
-				packet = new DatagramPacket(
-						encrypted, encrypted.length, getBroadcastAddress(), Constants.PORT);
-				socket.send(packet);
-				socket.close();
-			} catch (Exception e) {
+			} catch (SocketException e) {
 				Log.e(TAG, e.getMessage());
 			}
 		}
