@@ -29,6 +29,8 @@ import edu.ucla.discoverfriends.TargetActivity.CallbackReceiver;
 import edu.ucla.encryption.AES;
 
 /**
+ * @author Eric Chung
+ * 
  * TargetSetupSnpTask and TargetSetupCertificateListTask are AsyncTasks, which
  * can only be run once. Note that, it can be called again by making a new instance.
  * 

@@ -1,5 +1,3 @@
-//Copyright 2011 Google Inc. All Rights Reserved.
-
 package edu.ucla.discoverfriends;
 
 import java.io.BufferedOutputStream;
@@ -26,6 +24,8 @@ import edu.ucla.encryption.AES;
 import edu.ucla.encryption.PKE;
 
 /**
+ * @author Eric Chung
+ * 
  * A service that process each data transfer request. Encryption of the files
  * are done here before they are sent through the network.
  * 
