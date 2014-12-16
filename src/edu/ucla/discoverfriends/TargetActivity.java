@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -128,7 +129,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 	public void setHashedInitiatorUid(String hashedInitiatorUid) {
 		this.hashedInitiatorUid = hashedInitiatorUid;
 	}
-	
+
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -169,11 +170,11 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 			public boolean onKey(View v, int keyCode, KeyEvent event) {
 				if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
 					try {
-						byte[] publicKey = KeyRepository.getCertificate(Constants.INITIATOR_ALIAS, 
-								getFilesDir().getAbsolutePath(), getKeystorePassword()).getPublicKey().getEncoded();
+						PublicKey publicKey = KeyRepository.getCertificate(Constants.INITIATOR_ALIAS, 
+								getFilesDir().getAbsolutePath(), getKeystorePassword()).getPublicKey();
 						Intent serviceIntent = new Intent(TargetActivity.this, DataTransferService.class);
 						Bundle extras = new Bundle();
-						extras.putByteArray(Constants.EXTRAS_ENCRYPTED_GENERAL_KEY, publicKey);
+						extras.putSerializable(Constants.EXTRAS_PUBLIC_KEY, publicKey);
 						extras.putSerializable(Constants.EXTRAS_MESSAGE, editMessage.getText().toString());
 						serviceIntent.setAction(Constants.NETWORK_TARGET_MESSAGE);
 						serviceIntent.putExtras(extras);
@@ -295,7 +296,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 			WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 			WifiInfo info = wifiManager.getConnectionInfo();
 			String address = info.getMacAddress();
-			
+
 			// Target prepares to accept setup message passed by the initiator.
 			TargetSetupSnpTask targetSetupSnpTask = new DataReceiverService.TargetSetupSnpTask(TargetActivity.this) {
 				@Override
@@ -330,14 +331,14 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 				}
 			};
 			targetSetupSnpTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId(), address);
-			
+
 			// Target prepares to accept certificate list passed by the initiator.
 			TargetSetupCertificateListTask targetSetupCertificateListTask = new DataReceiverService.
 					TargetSetupCertificateListTask(TargetActivity.this) {
 				@Override
 				public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid) {
 				}
-				
+
 				@Override
 				public void receiveData(byte[] encryptedCrtList) {
 					// Uses initiator's ID to decrypt the encrypted list of certificates.
@@ -354,7 +355,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 				}
 			};
 			targetSetupCertificateListTask.execute();
-			
+
 			// Finish initialization phase.
 			setPostNetworkInitializationView();
 		}
@@ -373,16 +374,30 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 	public class TargetBroadcastReceiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			// Decrypt key to decrypt message.
-			if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE_LISTENER_RECEIVED)) {
+			// Decrypt key to decrypt message or certificate.
+			if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE_LISTENER_RECEIVED) ||
+					intent.getAction().equals(Constants.NETWORK_TARGET_CERTIFICATE_LISTENER_RECEIVED)) {
 				try {
 					byte[] encryptedSymmetricKey = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_SYMMETRIC_KEY);
-					byte[] encryptedMessage = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_MESSAGE);
-					String senderIp = intent.getStringExtra(Constants.EXTRAS_SENDER_IP);
-
 					byte[] symmetricKey = PKE.decrypt(getPrivateKey(), encryptedSymmetricKey);
-					byte[] message = AES.decrypt(symmetricKey, encryptedMessage);
-					Toast.makeText(TargetActivity.this, senderIp + ": " + Utils.byteToString(message), Toast.LENGTH_SHORT).show();
+
+					if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE_LISTENER_RECEIVED)) {
+						String senderIp = intent.getStringExtra(Constants.EXTRAS_SENDER_IP);
+						byte[] encryptedMessage = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_MESSAGE);
+						byte[] message = AES.decrypt(symmetricKey, encryptedMessage);
+						Toast.makeText(TargetActivity.this, senderIp + ": " + Utils.byteToString(message), Toast.LENGTH_SHORT).show();
+					}
+					
+					// Stores the certificate.
+					else {
+						String certificateOwnerIp = intent.getStringExtra(Constants.EXTRAS_CERTIFICATE_OWNER_IP);
+						byte[] encryptedCertificate = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_CERTIFICATE);
+						byte[] cf = AES.decrypt(symmetricKey, encryptedCertificate);
+						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cf);
+						ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+						X509Certificate crt = (X509Certificate) inputStream.readObject();
+						KeyRepository.storeCertificate(certificateOwnerIp, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
+					}
 				} catch (CertificateException e) {
 					Log.e(TAG, e.getMessage());
 				} catch (IOException e) {

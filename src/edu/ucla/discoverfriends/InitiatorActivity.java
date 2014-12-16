@@ -267,7 +267,6 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 				DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
 				List<WifiP2pDevice> peers = fragmentDetails.getPeers();
 
-				// TODO: Multithread connections for multiple connected devices.
 				// TODO: Should be done as an async task... or at least show when a client is connected.
 				if (!peers.isEmpty()) {
 					// Broadcast the initiator's setup network packet.
@@ -289,7 +288,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					while (isMyServiceRunning(DataTransferService.class)) {
 					}
 					progressDialog.dismiss();
-					
+
 					// Once all peers have sent their certificates, send the set of collected certificates to them.
 					try {
 						ArrayList<X509Certificate> list = KeyRepository.getCertificateList(getFilesDir().getAbsolutePath(), getKeystorePassword());
@@ -324,14 +323,14 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					try {
 						setCurrentSymmetricKey(AES.getRandomKey());
 						KeyStore keystore = KeyRepository.getKeyStore(getFilesDir().getAbsolutePath());
-						for (String alias : Collections.list(keystore.aliases())) {
-							if (!alias.equals(getUserId())) {
+						for (String ip : Collections.list(keystore.aliases())) {
+							if (Utils.isValidIp(ip)) {
 								Intent serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
 								Bundle extras = new Bundle();
-								extras.putString(Constants.EXTRAS_SENDER_IP, alias);
+								extras.putString(Constants.EXTRAS_SENDER_IP, ip);
 								extras.putByteArray(Constants.EXTRAS_SYMMETRIC_KEY_ENCODED, getCurrentSymmetricKey());
-								extras.putSerializable(Constants.EXTRAS_PUBLIC_KEY, keystore.getCertificate(alias).getPublicKey());
-								extras.putSerializable(Constants.EXTRAS_MESSAGE, editMessage.getText().toString());
+								extras.putSerializable(Constants.EXTRAS_PUBLIC_KEY, keystore.getCertificate(ip).getPublicKey());
+								extras.putString(Constants.EXTRAS_MESSAGE, editMessage.getText().toString());
 								serviceIntent.setAction(Constants.NETWORK_INITIATOR_KEY_AND_MESSAGE);
 								serviceIntent.putExtras(extras);
 								startService(serviceIntent);
@@ -597,15 +596,15 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 	private SetupNetworkPacket createSnp(BloomFilter<String> bf, BloomFilter<String> bfp, byte[] ecf) {
 		return new SetupNetworkPacket(bf, bfp, ecf);
 	}
-	
+
 	private boolean isMyServiceRunning(Class<?> serviceClass) {
-	    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-	    for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-	        if (serviceClass.getName().equals(service.service.getClassName())) {
-	            return true;
-	        }
-	    }
-	    return false;
+		ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+		for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+			if (serviceClass.getName().equals(service.service.getClassName())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 
@@ -626,20 +625,46 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					X509Certificate crt;
 					if (intent.getAction().equals(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED)) {
 						crt = decryptCertificate(ecf, Utils.charToByte(getUserId().toCharArray()));
+						crt.checkValidity();
+						String alias = senderIp;
+						KeyRepository.storeCertificate(alias, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
+
+						// Connect this peer to the group.
+						WifiP2pConfig config;
+						config = new WifiP2pConfig();
+						config.deviceAddress = intent.getExtras().getString(Constants.EXTRAS_MAC_ADDRESS);
+						config.wps.setup = WpsInfo.PBC;
+						connect(config);
 					}
+
+					// All peers are connected already, so send out the certificate update to all peers.
 					else {
 						crt = decryptCertificate(ecf, getCurrentSymmetricKey());
-					}
-					crt.checkValidity();
-					String alias = senderIp;
-					KeyRepository.storeCertificate(alias, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
+						crt.checkValidity();
+						KeyRepository.storeCertificate(senderIp, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
 
-					// Connect this peer to the group.
-					WifiP2pConfig config;
-					config = new WifiP2pConfig();
-					config.deviceAddress = intent.getExtras().getString(Constants.EXTRAS_MAC_ADDRESS);
-					config.wps.setup = WpsInfo.PBC;
-					connect(config);
+						try {
+							setCurrentSymmetricKey(AES.getRandomKey());
+							KeyStore keystore = KeyRepository.getKeyStore(getFilesDir().getAbsolutePath());
+							for (String ip : Collections.list(keystore.aliases())) {
+								if (Utils.isValidIp(ip)) {
+									Intent serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
+									Bundle extras = new Bundle();
+									extras.putString(Constants.EXTRAS_CERTIFICATE_OWNER_IP, senderIp);
+									extras.putString(Constants.EXTRAS_SENDER_IP, ip);
+									extras.putByteArray(Constants.EXTRAS_SYMMETRIC_KEY_ENCODED, getCurrentSymmetricKey());
+									extras.putSerializable(Constants.EXTRAS_PUBLIC_KEY, keystore.getCertificate(ip).getPublicKey());
+									extras.putSerializable(Constants.EXTRAS_CERTIFICATE, crt);
+									serviceIntent.setAction(Constants.NETWORK_INITIATOR_KEY_AND_CERTIFICATE);
+									serviceIntent.putExtras(extras);
+									startService(serviceIntent);
+								}
+							}
+						} catch (Exception e) {
+							Log.e(TAG, e.getMessage());
+						}
+
+					}
 				} catch (CertificateExpiredException e) {
 					Log.e(TAG, e.getMessage());
 				} catch (CertificateNotYetValidException e) {

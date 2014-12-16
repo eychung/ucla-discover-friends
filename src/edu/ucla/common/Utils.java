@@ -1,5 +1,7 @@
 package edu.ucla.common;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -83,5 +85,17 @@ public class Utils {
 		MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
 		messageDigest.update(charToByte(s.toCharArray()));
 		return new String(messageDigest.digest(), Charset.forName("UTF-8"));
+	}
+	
+
+	public static boolean isValidIp(String ip) {
+		boolean isIp;
+		try {
+			InetAddress inet = InetAddress.getByName(ip);
+			isIp = inet instanceof InetAddress;
+		} catch (UnknownHostException e) {
+			isIp = false;
+		}
+		return isIp;
 	}
 }

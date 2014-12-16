@@ -12,6 +12,7 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 
 import android.app.IntentService;
 import android.content.Intent;
@@ -161,7 +162,6 @@ public class DataTransferService extends IntentService {
 		}
 
 		// Initiator sends the list of certificates to each user. This call is done multiple times.
-		// TODO: It is also possible to grab the public key for hybrid encryption as the IP is the alias.
 		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_SETUP_CERTIFICATE_LIST)) {
 			try {
 				InetAddress address = InetAddress.getByName(intent.getStringExtra(Constants.EXTRAS_SENDER_IP));
@@ -211,8 +211,10 @@ public class DataTransferService extends IntentService {
 			}
 		}
 
-		// Initiator connects to a specific target and sends an encrypted key and encrypted message.
-		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_KEY_AND_MESSAGE)) {
+		// Initiator connects to a specific target and sends an encrypted key and encrypted message
+		// or encrypted key and encrypted certificate. This scheme follows hybrid encryption.
+		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_KEY_AND_MESSAGE) ||
+				intent.getAction().equals(Constants.NETWORK_INITIATOR_KEY_AND_CERTIFICATE)) {
 			try {
 				InetAddress address = InetAddress.getByName(intent.getStringExtra(Constants.EXTRAS_SENDER_IP));
 				DatagramSocket socket = new DatagramSocket(Constants.PORT, address);
@@ -242,10 +244,22 @@ public class DataTransferService extends IntentService {
 					socket.send(packet);
 
 
-					// Encrypt message with AES.
-					String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
-					byte[] plaintext = Utils.charToByte(message.toCharArray());
-					byte[] encrypted = AES.encrypt(symmetricKey, plaintext);
+					// Encrypt message or certificate with AES.
+					byte[] encrypted;
+					if (intent.getAction().equals(Constants.NETWORK_INITIATOR_KEY_AND_MESSAGE)) {
+						String message = intent.getStringExtra(Constants.EXTRAS_MESSAGE);
+						byte[] plaintext = Utils.charToByte(message.toCharArray());
+						encrypted = AES.encrypt(symmetricKey, plaintext);
+					}
+					else {
+						X509Certificate certificate = (X509Certificate) intent.getSerializableExtra(Constants.EXTRAS_CERTIFICATE);
+						ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
+						ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteOutputStream));
+						outputStream.writeObject(certificate);
+						outputStream.flush();
+						byte[] payload = byteOutputStream.toByteArray();
+						encrypted = AES.encrypt(symmetricKey, payload);
+					}
 
 					byteCount = encrypted.length;
 					payloadSize = new byte[4];
@@ -256,11 +270,11 @@ public class DataTransferService extends IntentService {
 						payloadSize[3-i] = (byte)((byteCount & (0xff << shift)) >>> shift);
 					}
 
-					// Send the encrypted message size.
+					// Send the encrypted message or encrypted certificate size.
 					packet = new DatagramPacket(payloadSize, 4, address, Constants.PORT);
 					socket.send(packet);
 
-					// Send the encrypted message.
+					// Send the encrypted message or encrypted certificate.
 					packet = new DatagramPacket(encrypted, encrypted.length, address, Constants.PORT);
 					socket.send(packet);
 					Log.i(TAG, "Broadcasted initiator message.");
@@ -277,14 +291,13 @@ public class DataTransferService extends IntentService {
 		}
 
 		// Using UDP, target sends an encrypted message or encrypted certificate to initiator.
-		// TODO: Determine when target should send new certificate.
 		else if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE) || 
 				intent.getAction().equals(Constants.NETWORK_TARGET_SEND_CERTIFICATE)) {
 			try {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
 				try {
-					byte[] key = intent.getByteArrayExtra(Constants.EXTRAS_ENCRYPTED_GENERAL_KEY);
+					byte[] key = ((PublicKey) intent.getSerializableExtra(Constants.EXTRAS_PUBLIC_KEY)).getEncoded();
 					byte[] encrypted = null;
 					// Encrypt message with AES.
 					if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE)) {

@@ -38,10 +38,6 @@ import edu.ucla.encryption.AES;
  * the receiver needs to initially decrypt a packet to determine whether to
  * continue communication with the initiator.
  */
-/* TODO: May have to change it so the class performs decryption as the group
- * owner is unable to remove peers from a group in Wi-Fi Direct without
- * reestablishing the group.
- */
 public class DataReceiverService extends IntentService {
 
 	private static final String TAG = DataReceiverService.class.getName();
@@ -145,7 +141,8 @@ public class DataReceiverService extends IntentService {
 		 * Special case as it receives two in one. Fortunately, the size of the encrypted
 		 * key is known.
 		 */
-		else if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE_LISTENER)) {
+		else if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE_LISTENER) ||
+				intent.getAction().equals(Constants.NETWORK_TARGET_CERTIFICATE_LISTENER)) {
 			try {
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				try {
@@ -179,15 +176,26 @@ public class DataReceiverService extends IntentService {
 						socket.receive(packet);
 
 						byte[] ciphertext = packet.getData();
-						Log.i(TAG, "Received encrypted key and encrypted message.");
-
-						// Broadcast packet back to calling activity.
-						intent = new Intent();
-						intent.setAction(Constants.NETWORK_TARGET_MESSAGE_LISTENER_RECEIVED);
-						intent.putExtra(Constants.EXTRAS_ENCRYPTED_SYMMETRIC_KEY, encryptedSymmetricKey);
-						intent.putExtra(Constants.EXTRAS_ENCRYPTED_MESSAGE, ciphertext);
-						intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
-						sendBroadcast(intent);
+						if (intent.getAction().equals(Constants.NETWORK_TARGET_MESSAGE_LISTENER)) {
+							Log.i(TAG, "Received encrypted key and encrypted message.");
+							// Broadcast packet back to calling activity.
+							intent = new Intent();
+							intent.setAction(Constants.NETWORK_TARGET_MESSAGE_LISTENER_RECEIVED);
+							intent.putExtra(Constants.EXTRAS_ENCRYPTED_SYMMETRIC_KEY, encryptedSymmetricKey);
+							intent.putExtra(Constants.EXTRAS_ENCRYPTED_MESSAGE, ciphertext);
+							intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
+							sendBroadcast(intent);
+						}
+						else {
+							Log.i(TAG, "Received encrypted key and encrypted certificate.");
+							// Broadcast packet back to calling activity.
+							intent = new Intent();
+							intent.setAction(Constants.NETWORK_TARGET_CERTIFICATE_LISTENER_RECEIVED);
+							intent.putExtra(Constants.EXTRAS_ENCRYPTED_SYMMETRIC_KEY, encryptedSymmetricKey);
+							intent.putExtra(Constants.EXTRAS_ENCRYPTED_CERTIFICATE, ciphertext);
+							intent.putExtra(Constants.EXTRAS_SENDER_IP, packet.getAddress().toString());
+							sendBroadcast(intent);
+						}
 					}
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
