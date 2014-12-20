@@ -318,9 +318,9 @@ containing a value of this type.
         public static final int section_header=0x7f020035;
     }
     public static final class id {
-        public static final int action_settings=0x7f090043;
-        public static final int atn_direct_discover=0x7f090042;
-        public static final int atn_direct_enable=0x7f090041;
+        public static final int action_settings=0x7f090044;
+        public static final int atn_direct_discover=0x7f090043;
+        public static final int atn_direct_enable=0x7f090042;
         public static final int authButton=0x7f090035;
         public static final int bottom=0x7f090006;
         public static final int box_count=0x7f090003;
@@ -386,6 +386,7 @@ containing a value of this type.
         public static final int status_text=0x7f090031;
         public static final int top=0x7f090008;
         public static final int txt_debug=0x7f09003a;
+        public static final int txt_info=0x7f090041;
     }
     public static final class layout {
         public static final int com_facebook_friendpickerfragment=0x7f030000;

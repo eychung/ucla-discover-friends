@@ -1,6 +1,8 @@
 package edu.ucla.common;
 
 public class Constants {
+	public static final String TEST = "test";
+	
 	// Identifier strings
 	public static final String USER_LABEL = "user";
 	public static final String USER_INITIATOR = "initiator";
@@ -62,4 +64,12 @@ public class Constants {
 	// ProgressDialog strings
 	public static final String PROGRESS_DIALOG_CONNECTING_ALL_PEERS = "Waiting till all peers to reply.";
 	public static final String PROGRESS_DIALOG_CONNECTING_ALL_PEERS_TITLE = "Receiving Peer Replies";
+	
+	// TextView info messages
+	public static final String INFO_NETWORK_INITIALIZATION_CERTIFICATE_LIST = "Network initialization: Received SNP packet.";
+	public static final String INFO_NETWORK_INITIALIZATION_CONNECT = "Network initialization: Connected to P2P group.";
+	public static final String INFO_NETWORK_INITIALIZATION_ENDED_FAILED = "Network initialization ended in failure.";
+	public static final String INFO_NETWORK_INITIALIZATION_ENDED_SUCCESS = "Network initialization ended in success.";
+	public static final String INFO_NETWORK_INITIALIZATION_SNP = "Network initialization: Received certificate list.";
 }
+

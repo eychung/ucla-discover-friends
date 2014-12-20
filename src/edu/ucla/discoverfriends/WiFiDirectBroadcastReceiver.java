@@ -72,12 +72,20 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 		if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
 			int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
 			if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-				initiatorActivity.setIsWifiP2pEnabled(true);
-				targetActivity.setIsWifiP2pEnabled(true);
+				if (initiatorActivity != null) {
+					initiatorActivity.setIsWifiP2pEnabled(true);
+				}
+				else {
+					targetActivity.setIsWifiP2pEnabled(true);
+				}
 			} else {
-				initiatorActivity.setIsWifiP2pEnabled(false);
-				targetActivity.setIsWifiP2pEnabled(false);
-				initiatorActivity.resetData();
+				if (initiatorActivity != null) {
+					initiatorActivity.setIsWifiP2pEnabled(false);
+					initiatorActivity.resetData();
+				}
+				else {
+					targetActivity.setIsWifiP2pEnabled(false);
+				}
 			}
 			Log.d(TAG, "P2P state is changed to: " + state);
 		}
@@ -88,9 +96,11 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 		 *  callback on PeerListListener.onPeersAvailable().
 		 */
 		else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-			if (manager != null) {
-				manager.requestPeers(channel, (PeerListListener) initiatorActivity.getFragmentManager().findFragmentById(R.id.frag_list));
-				Log.d(TAG, "Available peer list has changed and fetched new list of peers.");
+			if (initiatorActivity != null) {
+				if (manager != null) {
+					manager.requestPeers(channel, (PeerListListener) initiatorActivity.getFragmentManager().findFragmentById(R.id.frag_list));
+					Log.d(TAG, "Available peer list has changed and fetched new list of peers.");
+				}
 			}
 		}
 
@@ -102,16 +112,21 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 			NetworkInfo networkInfo = (NetworkInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
 
 			if (networkInfo.isConnected()) {
-				manager.requestGroupInfo(channel, targetActivity);
+				if (targetActivity != null) {
+					manager.requestGroupInfo(channel, targetActivity);
+				}
 			} else {
-				initiatorActivity.resetData();
+				if (initiatorActivity != null)
+					initiatorActivity.resetData();
 			}
 		}
 
 		// A change in a device's status has been detected so update its info in list.
 		else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
-			DeviceListFragment fragment = (DeviceListFragment) initiatorActivity.getFragmentManager().findFragmentById(R.id.frag_list);
-			fragment.updateThisDevice((WifiP2pDevice) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
+			if (initiatorActivity != null) {
+				DeviceListFragment fragment = (DeviceListFragment) initiatorActivity.getFragmentManager().findFragmentById(R.id.frag_list);
+				fragment.updateThisDevice((WifiP2pDevice) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
+			}
 		}
 	}
 }

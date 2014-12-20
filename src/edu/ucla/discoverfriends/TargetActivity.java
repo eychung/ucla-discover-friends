@@ -34,6 +34,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnKeyListener;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 import edu.ucla.common.Constants;
 import edu.ucla.common.Utils;
@@ -43,12 +44,17 @@ import edu.ucla.encryption.AES;
 import edu.ucla.encryption.KeyRepository;
 import edu.ucla.encryption.PKE;
 
+/**
+ * Because Wi-Fi Direct doesn't allow the initiator to remove a peer from the
+ * group, the logic has to be passed on to the target to disconnect.
+ */
 public class TargetActivity extends Activity implements ChannelListener, GroupInfoListener {
 
 	private final static String TAG = TargetActivity.class.getName();
 
 	// UI
 	private EditText editMessage = null;
+	private TextView textInfo = null;
 	private ProgressDialog progressDialog = null;
 
 	private boolean isWifiP2pEnabled = false;
@@ -137,6 +143,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 		setContentView(R.layout.target);
 
 		editMessage = (EditText) findViewById(R.id.edt_message);
+		textInfo = (TextView) findViewById(R.id.txt_info);
 
 		Intent intent = getIntent();
 		this.setUserId(intent.getExtras().getString(Constants.EXTRAS_USER_ID));
@@ -293,6 +300,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 		}
 
 		if (!group.isGroupOwner()) {
+			textInfo.setText(Constants.INFO_NETWORK_INITIALIZATION_CONNECT);
 			WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 			WifiInfo info = wifiManager.getConnectionInfo();
 			String address = info.getMacAddress();
@@ -300,74 +308,85 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 			// Target prepares to accept setup message passed by the initiator.
 			TargetSetupSnpTask targetSetupSnpTask = new DataReceiverService.TargetSetupSnpTask(TargetActivity.this) {
 				@Override
-				public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid) {
-					setSnp(snp);
-					setHashedInitiatorUid(hashedInitiatorUid);
-					try {
-						// Stores initiator's certificate into own keystore.
-						byte[] encryptedCertificate = getSnp().getEcf();
-						byte[] cf = AES.decrypt(Utils.charToByte(hashedInitiatorUid.toCharArray()), encryptedCertificate);
-						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cf);
-						ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
-						X509Certificate crt = (X509Certificate) inputStream.readObject();
-						KeyRepository.storeCertificate(Constants.INITIATOR_ALIAS, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
-					} catch (CertificateException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (ClassNotFoundException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (IOException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (KeyStoreException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (NoSuchAlgorithmException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (Exception e) {
-						Log.e(TAG, e.getMessage());
+				public void receiveData(boolean successFlag, SetupNetworkPacket snp, String hashedInitiatorUid) {
+					if (successFlag) {
+						textInfo.setText(Constants.INFO_NETWORK_INITIALIZATION_SNP);
+						setSnp(snp);
+						setHashedInitiatorUid(hashedInitiatorUid);
+						try {
+							// Stores initiator's certificate into own keystore.
+							byte[] encryptedCertificate = getSnp().getEcf();
+							byte[] cf = AES.decrypt(Utils.charToByte(hashedInitiatorUid.toCharArray()), encryptedCertificate);
+							ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cf);
+							ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+							X509Certificate crt = (X509Certificate) inputStream.readObject();
+							KeyRepository.storeCertificate(Constants.INITIATOR_ALIAS, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
+						} catch (CertificateException e) {
+							Log.e(TAG, e.getMessage());
+						} catch (ClassNotFoundException e) {
+							Log.e(TAG, e.getMessage());
+						} catch (IOException e) {
+							Log.e(TAG, e.getMessage());
+						} catch (KeyStoreException e) {
+							Log.e(TAG, e.getMessage());
+						} catch (NoSuchAlgorithmException e) {
+							Log.e(TAG, e.getMessage());
+						} catch (Exception e) {
+							Log.e(TAG, e.getMessage());
+						}
+
+						// Target prepares to accept certificate list passed by the initiator.
+						TargetSetupCertificateListTask targetSetupCertificateListTask = new DataReceiverService.
+								TargetSetupCertificateListTask(TargetActivity.this) {
+							@Override
+							public void receiveData(boolean successFlag, SetupNetworkPacket snp, String hashedInitiatorUid) {
+							}
+
+							@Override
+							public void receiveData(byte[] encryptedCrtList) {
+								textInfo.setText(Constants.INFO_NETWORK_INITIALIZATION_CERTIFICATE_LIST);
+								// Uses initiator's ID to decrypt the encrypted list of certificates.
+								try {
+									byte[] cfList = AES.decrypt(Utils.charToByte(getHashedInitiatorUid().toCharArray()), encryptedCrtList);
+									ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cfList);
+									ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+									@SuppressWarnings("unchecked")
+									ArrayList<X509Certificate> crtList = (ArrayList<X509Certificate>) inputStream.readObject();
+									KeyRepository.storeCertificateList(crtList, getFilesDir().getAbsolutePath(), getKeystorePassword());
+								} catch (Exception e) {
+									Log.e(TAG, e.getMessage());
+								}
+							}
+						};
+						targetSetupCertificateListTask.execute();
+
+						// Finish initialization phase.
+						setPostNetworkInitializationView();
+					}
+					
+					// Something went wrong (perhaps purposefully), so disconnect myself from P2P group.
+					else {
+						manager.removeGroup(channel, null);
+						textInfo.setText(Constants.INFO_NETWORK_INITIALIZATION_ENDED_FAILED);
 					}
 				}
-
+				
 				@Override
 				public void receiveData(byte[] encryptedCrtList) {
 				}
 			};
 			targetSetupSnpTask.execute(this.getCrt(), this.getUserId(), this.getFriendsId(), address);
-
-			// Target prepares to accept certificate list passed by the initiator.
-			TargetSetupCertificateListTask targetSetupCertificateListTask = new DataReceiverService.
-					TargetSetupCertificateListTask(TargetActivity.this) {
-				@Override
-				public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid) {
-				}
-
-				@Override
-				public void receiveData(byte[] encryptedCrtList) {
-					// Uses initiator's ID to decrypt the encrypted list of certificates.
-					try {
-						byte[] cfList = AES.decrypt(Utils.charToByte(getHashedInitiatorUid().toCharArray()), encryptedCrtList);
-						ByteArrayInputStream byteInputStream = new ByteArrayInputStream(cfList);
-						ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
-						@SuppressWarnings("unchecked")
-						ArrayList<X509Certificate> crtList = (ArrayList<X509Certificate>) inputStream.readObject();
-						KeyRepository.storeCertificateList(crtList, getFilesDir().getAbsolutePath(), getKeystorePassword());
-					} catch (Exception e) {
-						Log.e(TAG, e.getMessage());
-					}
-				}
-			};
-			targetSetupCertificateListTask.execute();
-
-			// Finish initialization phase.
-			setPostNetworkInitializationView();
 		}
 	}
 
 	public void setPostNetworkInitializationView() {
 		editMessage.setVisibility(View.VISIBLE);
+		textInfo.setText(Constants.INFO_NETWORK_INITIALIZATION_ENDED_SUCCESS);
 	}
 
 
 	public interface CallbackReceiver {
-		public void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid);
+		public void receiveData(boolean successFlag, SetupNetworkPacket snp, String hashedInitiatorUid);
 		public void receiveData(byte[] encryptedCrtList);
 	}
 
@@ -387,7 +406,7 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 						byte[] message = AES.decrypt(symmetricKey, encryptedMessage);
 						Toast.makeText(TargetActivity.this, senderIp + ": " + Utils.byteToString(message), Toast.LENGTH_SHORT).show();
 					}
-					
+
 					// Stores the certificate.
 					else {
 						String certificateOwnerIp = intent.getStringExtra(Constants.EXTRAS_CERTIFICATE_OWNER_IP);

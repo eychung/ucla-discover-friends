@@ -15,6 +15,7 @@ import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 
 import android.app.IntentService;
+import android.content.Context;
 import android.content.Intent;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
@@ -53,6 +54,7 @@ public class DataTransferService extends IntentService {
 	 * with the mobile network not wanting to do broadcast.
 	 */
 	private InetAddress getBroadcastAddress() throws IOException {
+		mWifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 		DhcpInfo dhcp = mWifi.getDhcpInfo();
 		if (dhcp == null) {
 			Log.d(TAG, "Could not get DHCP information.");
@@ -71,19 +73,26 @@ public class DataTransferService extends IntentService {
 	 * @see android.app.IntentService#onHandleIntent(android.content.Intent)
 	 */
 	@Override
-	protected void onHandleIntent(Intent intent) {		
+	protected void onHandleIntent(Intent intent) {
+		Log.i(TAG, "Enters handle.");
+		if (intent.getAction().equals(Constants.TEST)) {
+			Log.i(TAG, "Finished intent");
+		}
 		// At network setup, UDP broadcasts (BF, BF+, CF) and waits for encrypted CF.
-		if (intent.getAction().equals(Constants.NETWORK_INITIATOR_SETUP)) {
+		else if (intent.getAction().equals(Constants.NETWORK_INITIATOR_SETUP)) {
 			try {
+				Log.i(TAG, "Creating socket.");
 				DatagramSocket socket = new DatagramSocket(Constants.PORT);
 				socket.setBroadcast(true);
 				socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
+				Log.i(TAG, "Finished setting up socket.");
 				try {
 					// Broadcast message.
 					ByteArrayOutputStream byteStream = new ByteArrayOutputStream(Constants.BYTE_ARRAY_SIZE);
 					ObjectOutputStream outputStream = new ObjectOutputStream(new BufferedOutputStream(byteStream));
 					outputStream.writeObject(intent.getExtras().getSerializable(Constants.EXTRAS_SNP));
 					outputStream.flush();
+					Log.i(TAG, "Wrote SNP object.");
 					byte[] payload = byteStream.toByteArray();
 					int byteCount = payload.length;
 					byte[] payloadSize = new byte[4];
@@ -98,6 +107,7 @@ public class DataTransferService extends IntentService {
 					DatagramPacket packet = new DatagramPacket(
 							payloadSize, 4, getBroadcastAddress(), Constants.PORT);
 					socket.send(packet);
+					Log.i(TAG, "Sent size packet.");
 
 					// Send the payload.
 					packet = new DatagramPacket(

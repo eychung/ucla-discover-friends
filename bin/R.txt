@@ -123,9 +123,9 @@ int drawable ic_launcher 0x7f020032
 int drawable icon 0x7f020033
 int drawable machine 0x7f020034
 int drawable section_header 0x7f020035
-int id action_settings 0x7f090043
-int id atn_direct_discover 0x7f090042
-int id atn_direct_enable 0x7f090041
+int id action_settings 0x7f090044
+int id atn_direct_discover 0x7f090043
+int id atn_direct_enable 0x7f090042
 int id authButton 0x7f090035
 int id bottom 0x7f090006
 int id box_count 0x7f090003
@@ -191,6 +191,7 @@ int id status_bar 0x7f090030
 int id status_text 0x7f090031
 int id top 0x7f090008
 int id txt_debug 0x7f09003a
+int id txt_info 0x7f090041
 int layout com_facebook_friendpickerfragment 0x7f030000
 int layout com_facebook_login_activity_layout 0x7f030001
 int layout com_facebook_picker_activity_circle_row 0x7f030002

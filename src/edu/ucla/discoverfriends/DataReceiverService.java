@@ -19,7 +19,6 @@ import android.app.IntentService;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.util.Log;
-import android.util.Pair;
 
 import com.google.common.hash.BloomFilter;
 
@@ -218,7 +217,7 @@ public class DataReceiverService extends IntentService {
 	 * sending back the target's certificate. Normally, decryption happens
 	 * at the activity level rather than the network level.
 	 */
-	public static abstract class TargetSetupSnpTask extends AsyncTask<Object, Void, Pair<SetupNetworkPacket, String>> implements CallbackReceiver {
+	public static abstract class TargetSetupSnpTask extends AsyncTask<Object, Void, TargetSetupWrapper> implements CallbackReceiver {
 
 		Activity activity;
 
@@ -226,10 +225,10 @@ public class DataReceiverService extends IntentService {
 			this.activity = activity;
 		}
 
-		public abstract void receiveData(SetupNetworkPacket snp, String hashedInitiatorUid);
+		public abstract void receiveData(boolean successFlag, SetupNetworkPacket snp, String hashedInitiatorUid);
 
 		@Override
-		protected Pair<SetupNetworkPacket, String> doInBackground(Object... params) {
+		protected TargetSetupWrapper doInBackground(Object... params) {
 			X509Certificate ownCrt = (X509Certificate) params[0];
 			String uid = (String) params[1];
 			String[] friendsUid = (String[]) params[2];
@@ -276,7 +275,7 @@ public class DataReceiverService extends IntentService {
 						}
 						else {
 							Log.i(TAG, "User is not the initiator's target.");
-							break;
+							return new TargetSetupWrapper(false, null, null);
 						}
 
 						// Decrypt and validate sender's certificate.
@@ -291,7 +290,7 @@ public class DataReceiverService extends IntentService {
 						}
 						else {
 							Log.i(TAG, "Could not find match with initiator's ID.");
-							break;
+							return new TargetSetupWrapper(false, null, null);
 						}
 
 						// Send own encrypted certificate back to initiator.
@@ -335,32 +334,38 @@ public class DataReceiverService extends IntentService {
 						socket.send(sendPacket);
 						Log.i(TAG, "Sent MAC address to initiator.");
 
-						return new Pair<SetupNetworkPacket, String>(snp, hashedInitiatorUid);
+						return new TargetSetupWrapper(true, snp, hashedInitiatorUid);
 					}
 				} catch (CertificateExpiredException e) {
 					Log.e(TAG, "Certificate has expired.");
+					return new TargetSetupWrapper(false, null, null);
 				} catch (CertificateNotYetValidException e) {
 					Log.e(TAG, "Certificate not yet valid.");
+					return new TargetSetupWrapper(false, null, null);
 				} catch (ClassNotFoundException e) {
 					Log.e(TAG, "Could not cast packet as SetupNetworkPacket Object.");
+					return new TargetSetupWrapper(false, null, null);
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
+					return new TargetSetupWrapper(false, null, null);
 				} catch (NoSuchAlgorithmException e) {
 					Log.e(TAG, e.getMessage());
+					return new TargetSetupWrapper(false, null, null);
 				} catch (Exception e) {
 					Log.e(TAG, e.getMessage());
+					return new TargetSetupWrapper(false, null, null);
 				} finally {
 					socket.close();
 				}
 			} catch (SocketException e) {
 				Log.e(TAG, e.getMessage());
+				return new TargetSetupWrapper(false, null, null);
 			}
-			return null;
 		}
 
 		@Override
-		protected void onPostExecute(Pair<SetupNetworkPacket, String> pair) {
-			receiveData(pair.first, pair.second);
+		protected void onPostExecute(TargetSetupWrapper tsw) {
+			receiveData(tsw.successFlag, tsw.snp, tsw.hashedInitiatorUid);
 		}
 	}
 
@@ -420,4 +425,17 @@ public class DataReceiverService extends IntentService {
 		}
 	}
 
+	public static class TargetSetupWrapper {
+		boolean successFlag;
+		SetupNetworkPacket snp;
+		String hashedInitiatorUid;
+		
+		public TargetSetupWrapper(boolean successFlag, SetupNetworkPacket snp, String hashedInitiatorUid) {
+			this.successFlag = successFlag;
+			this.snp = snp;
+			this.hashedInitiatorUid = hashedInitiatorUid;
+		}
+		
+	}
+	
 }

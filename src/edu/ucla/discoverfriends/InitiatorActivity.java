@@ -21,8 +21,6 @@ import java.util.Collections;
 import java.util.List;
 
 import android.app.Activity;
-import android.app.ActivityManager;
-import android.app.ActivityManager.RunningServiceInfo;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -97,6 +95,8 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 
 	public IntentFilter protocolIntentFilter = null; 
 	public InitiatorBroadcastReceiver protocolReceiver;
+
+	private int connectedPeersCounter;
 
 
 	public Channel getChannel() {
@@ -267,17 +267,21 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 				DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
 				List<WifiP2pDevice> peers = fragmentDetails.getPeers();
 
-				// TODO: Should be done as an async task... or at least show when a client is connected.
+				// Connect to all discovered devices.
 				if (!peers.isEmpty()) {
-					// Broadcast the initiator's setup network packet.
-					Intent serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
-					Bundle extras = new Bundle();
-					extras.putSerializable(Constants.EXTRAS_SNP, getSnp());
-					serviceIntent.setAction(Constants.NETWORK_INITIATOR_SETUP);
-					serviceIntent.putExtras(extras);
-					startService(serviceIntent);
+					connectedPeersCounter = 0;
 
-					// Wait until all intent requests in service queue finishes.
+					for (int i = 0; i < peers.size(); i++) {
+						// Connect this peer to the group.
+						WifiP2pConfig config;
+						config = new WifiP2pConfig();
+						config.deviceAddress = peers.get(i).deviceAddress;
+						config.wps.setup = WpsInfo.PBC;
+						connect(config);
+					}
+
+					// Wait until all peers are connected.
+					// TODO: Check if a peer can stay in invited state or when will it go to failed.
 					progressDialog = new ProgressDialog(InitiatorActivity.this);
 					progressDialog.setTitle(Constants.PROGRESS_DIALOG_CONNECTING_ALL_PEERS_TITLE);
 					progressDialog.setMessage(Constants.PROGRESS_DIALOG_CONNECTING_ALL_PEERS);
@@ -285,30 +289,20 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					progressDialog.setMax(100);
 					progressDialog.setCancelable(true);
 					progressDialog.show();
-					while (isMyServiceRunning(DataTransferService.class)) {
+					while (existPendingConnections()) {
 					}
 					progressDialog.dismiss();
+					Log.i(TAG, "Connected to all devices.");
 
-					// Once all peers have sent their certificates, send the set of collected certificates to them.
-					try {
-						ArrayList<X509Certificate> list = KeyRepository.getCertificateList(getFilesDir().getAbsolutePath(), getKeystorePassword());
-						for (int i = 0; i < targetsIpList.size(); i++) {
-							serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
-							extras = new Bundle();
-							extras.putString(Constants.EXTRAS_USER_ID, getUserId());
-							extras.putSerializable(Constants.EXTRAS_SENDER_IP, targetsIpList.get(i).getHostAddress());
-							extras.putSerializable(Constants.EXTRAS_CERTIFICATE_LIST, list);
-							serviceIntent.setAction(Constants.NETWORK_INITIATOR_SETUP_CERTIFICATE_LIST);
-							serviceIntent.putExtras(extras);
-							startService(serviceIntent);
-						}
-					} catch (IOException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (KeyStoreException e) {
-						Log.e(TAG, e.getMessage());
-					}
-
-					setPostNetworkInitializationView();
+					// Broadcast the initiator's setup network packet.
+					Intent serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
+					Bundle extras = new Bundle();
+					extras.putSerializable(Constants.EXTRAS_SNP, getSnp());
+					serviceIntent.setAction(Constants.NETWORK_INITIATOR_SETUP);
+					serviceIntent.putExtras(extras);
+					Log.i(TAG, "Broadcasting initiator setup packet");
+					startService(serviceIntent);
+					Log.i(TAG, "Service has been started.");
 				}
 				else {
 					Toast.makeText(InitiatorActivity.this, R.string.peer_list_empty, Toast.LENGTH_LONG).show();
@@ -597,14 +591,27 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 		return new SetupNetworkPacket(bf, bfp, ecf);
 	}
 
-	private boolean isMyServiceRunning(Class<?> serviceClass) {
-		ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-		for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-			if (serviceClass.getName().equals(service.service.getClassName())) {
-				return true;
+	private boolean existPendingConnections() {
+		DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
+		List<WifiP2pDevice> peers = fragmentDetails.getPeers();
+		for (int i = 0; i < peers.size(); i++) {
+			if (peers.get(i).status == WifiP2pDevice.INVITED) {
+				return false;
 			}
 		}
-		return false;
+		return true;
+	}
+
+	private int getNumConnectedPeers() {
+		int num = 0;
+		DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
+		List<WifiP2pDevice> peers = fragmentDetails.getPeers();
+		for (int i = 0; i < peers.size(); i++) {
+			if (peers.get(i).status == WifiP2pDevice.CONNECTED) {
+				num += 1;
+			}
+		}
+		return num;
 	}
 
 
@@ -624,17 +631,33 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					targetsIpList.add(InetAddress.getByName(senderIp));
 					X509Certificate crt;
 					if (intent.getAction().equals(Constants.NETWORK_INITIATOR_GET_SETUP_ENCRYPTED_CERTIFICATE_RECEIVED)) {
+						connectedPeersCounter += 1;
 						crt = decryptCertificate(ecf, Utils.charToByte(getUserId().toCharArray()));
 						crt.checkValidity();
 						String alias = senderIp;
 						KeyRepository.storeCertificate(alias, crt, getFilesDir().getAbsolutePath(), getKeystorePassword());
 
-						// Connect this peer to the group.
-						WifiP2pConfig config;
-						config = new WifiP2pConfig();
-						config.deviceAddress = intent.getExtras().getString(Constants.EXTRAS_MAC_ADDRESS);
-						config.wps.setup = WpsInfo.PBC;
-						connect(config);
+						// If it is the certificate sent by the last target, then send out collected certificates to all peers.
+						if (connectedPeersCounter == getNumConnectedPeers()) {
+							try {
+								ArrayList<X509Certificate> list = KeyRepository.getCertificateList(getFilesDir().getAbsolutePath(), getKeystorePassword());
+								for (int i = 0; i < targetsIpList.size(); i++) {
+									Intent serviceIntent = new Intent(InitiatorActivity.this, DataTransferService.class);
+									Bundle extras = new Bundle();
+									extras.putString(Constants.EXTRAS_USER_ID, getUserId());
+									extras.putSerializable(Constants.EXTRAS_SENDER_IP, targetsIpList.get(i).getHostAddress());
+									extras.putSerializable(Constants.EXTRAS_CERTIFICATE_LIST, list);
+									serviceIntent.setAction(Constants.NETWORK_INITIATOR_SETUP_CERTIFICATE_LIST);
+									serviceIntent.putExtras(extras);
+									startService(serviceIntent);
+								}
+							} catch (IOException e) {
+								Log.e(TAG, e.getMessage());
+							} catch (KeyStoreException e) {
+								Log.e(TAG, e.getMessage());
+							}
+							setPostNetworkInitializationView();
+						}
 					}
 
 					// All peers are connected already, so send out the certificate update to all peers.

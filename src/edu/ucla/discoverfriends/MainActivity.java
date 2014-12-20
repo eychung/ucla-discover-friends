@@ -1,5 +1,6 @@
 package edu.ucla.discoverfriends;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -12,7 +13,9 @@ import java.security.cert.X509Certificate;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -91,7 +94,7 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 	public void setKeystorePassword(String keystorePassword) {
 		this.keystorePassword = keystorePassword;
 	}
-	
+
 	public PrivateKey getPrivateKey() {
 		return privateKey;
 	}
@@ -99,7 +102,7 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 	public void setPrivateKey(PrivateKey privateKey) {
 		this.privateKey = privateKey;
 	}
-	
+
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -109,7 +112,7 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 		textDebug = (TextView) findViewById(R.id.txt_debug);
 		buttonInitiator = (Button) findViewById(R.id.btn_initiator);
 		buttonTarget = (Button) findViewById(R.id.btn_target);
-		
+
 		buttonInitiator.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
@@ -122,7 +125,7 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 				startActivity(intent);
 			}
 		});
-		
+
 		buttonTarget.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
@@ -163,30 +166,45 @@ public class MainActivity extends Activity implements FacebookFragmentListener {
 
 		// Create keystore file and save it into device's internal storage.
 		// Then, create user's certificate and store it into the keystore.
-		try {
-			String keystorePassword = Utils.generateRandomKeystorePassword();
-			this.setKeystorePassword(keystorePassword);
-			KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath(), this.getKeystorePassword());
-			PrivateKey pkey = Certificate.createUserAndStoreCertificate(
-					this.getUserId(), getFilesDir().getAbsolutePath(), this.getKeystorePassword());
-			this.setPrivateKey(pkey);
-			Log.i(TAG, "Created local keystore.");
-		} catch (GeneralSecurityException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.e(TAG, e.getMessage());
-		}
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		if(!prefs.getBoolean("firstTime", false)) {
+			// Code here will only be executed once.
+			File file = new File(getFilesDir().getAbsolutePath() + Constants.KEYSTORE_NAME);
+			if(file.exists()) {
+				file.delete();
+			}
+			else {
+				try {
+					String keystorePassword = Utils.generateRandomKeystorePassword();
+					this.setKeystorePassword(keystorePassword);
+					Log.d(TAG, "KeyStore password is: " + getKeystorePassword());
+					KeyRepository.createUserKeyStore(getFilesDir().getAbsolutePath(), this.getKeystorePassword());
+					PrivateKey pkey = Certificate.createUserAndStoreCertificate(
+							this.getUserId(), getFilesDir().getAbsolutePath(), this.getKeystorePassword());
+					this.setPrivateKey(pkey);
+					Log.i(TAG, "Created local keystore.");
+				} catch (GeneralSecurityException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
+				}
 
-		try {
-			this.setCrt(this.getOwnCertificate());
-		} catch (CertificateException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (KeyStoreException e) {
-			Log.e(TAG, e.getMessage());
-		} catch (NoSuchAlgorithmException e) {
-			Log.e(TAG, e.getMessage());
+				try {
+					this.setCrt(this.getOwnCertificate());
+				} catch (CertificateException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (KeyStoreException e) {
+					Log.e(TAG, e.getMessage());
+				} catch (NoSuchAlgorithmException e) {
+					Log.e(TAG, e.getMessage());
+				}
+			}
+
+			SharedPreferences.Editor editor = prefs.edit();
+			editor.putBoolean("firstTime", true);
+			editor.commit();
 		}
 	}
 

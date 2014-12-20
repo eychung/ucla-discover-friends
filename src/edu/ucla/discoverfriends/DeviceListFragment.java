@@ -120,7 +120,7 @@ public class DeviceListFragment extends ListFragment implements PeerListListener
 	 * Converts an encoded status code to a human-understandable status.
 	 */
 	private static String getDeviceStatus(int deviceStatus) {
-		Log.d(TAG, "Peer status :" + deviceStatus);
+		Log.d(TAG, "Peer status: " + deviceStatus);
 		switch (deviceStatus) {
 		case WifiP2pDevice.AVAILABLE:
 			return "Available";
