@@ -29,7 +29,7 @@ import android.util.Log;
 /**
  * A BroadcastReceiver that notifies of important Wi-Fi P2P events.
  * InitiatorActivity uses this class to update changes to peers.
- * TargetActivity only uses this class to detect Wi-Fi status.
+ * TargetActivity uses this class to detect Wi-Fi status changes.
  */
 public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 

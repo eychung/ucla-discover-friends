@@ -32,7 +32,7 @@ import edu.ucla.encryption.PKE;
  * are done here before they are sent through the network.
  * 
  * Each packet is sent in the following encoding:
- * size_of_rest_of_packet_in_bytes, rest_of_packet
+ * size_of_data_1_in_bytes, ..., size_of_data_n_in_byte, data_1, ..., data_n
  */
 public class DataTransferService extends IntentService {
 

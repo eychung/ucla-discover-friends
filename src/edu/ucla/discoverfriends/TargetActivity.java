@@ -45,8 +45,11 @@ import edu.ucla.encryption.KeyRepository;
 import edu.ucla.encryption.PKE;
 
 /**
- * Because Wi-Fi Direct doesn't allow the initiator to remove a peer from the
- * group, the logic has to be passed on to the target to disconnect.
+ * TargetActivity serve as the main activity for the target and handles
+ * communication to the initiator.
+ * 
+ * Note: Because Wi-Fi Direct doesn't allow the initiator to remove a peer from
+ * the group, the logic has to be passed on to the target to disconnect.
  */
 public class TargetActivity extends Activity implements ChannelListener, GroupInfoListener {
 
@@ -379,17 +382,29 @@ public class TargetActivity extends Activity implements ChannelListener, GroupIn
 		}
 	}
 
+	/**
+	 * Set view to display the chat client, allowing subsequent messages to be
+	 * sent to the initiator.
+	 */
 	public void setPostNetworkInitializationView() {
 		editMessage.setVisibility(View.VISIBLE);
 		textInfo.setText(Constants.INFO_NETWORK_INITIALIZATION_ENDED_SUCCESS);
 	}
 
 
+	/**
+	 * Handles data received using TargetSetupSnp and TargetSetupCertificateList
+	 * AsyncTasks in DataReceiverService.
+	 */
 	public interface CallbackReceiver {
 		public void receiveData(boolean successFlag, SetupNetworkPacket snp, String hashedInitiatorUid);
 		public void receiveData(byte[] encryptedCrtList);
 	}
 
+	/**
+	 * Handles data received by broadcast at the end of DataReceiverService's
+	 * onHandleIntent() method.
+	 */
 	public class TargetBroadcastReceiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {

@@ -59,8 +59,9 @@ import edu.ucla.encryption.AES;
 import edu.ucla.encryption.KeyRepository;
 
 /**
- * Includes functions to encrypt and decrypt certificates using the hash of the
- * initiator's id as the key.
+ * InitiatorActivity serve as the main activity for the initiator and handles
+ * communication to targets. Includes functions to encrypt and decrypt
+ * certificates using the hash of the initiator's id as the key.
  * 
  * Defines a InitiatorBroadcastReceiver class.
  */
@@ -280,8 +281,8 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 						connect(config);
 					}
 
-					// Wait until all peers are connected.
 					// TODO: Check if a peer can stay in invited state or when will it go to failed.
+					Log.i(TAG, "Connecting to all detected devices.");
 					progressDialog = new ProgressDialog(InitiatorActivity.this);
 					progressDialog.setTitle(Constants.PROGRESS_DIALOG_CONNECTING_ALL_PEERS_TITLE);
 					progressDialog.setMessage(Constants.PROGRESS_DIALOG_CONNECTING_ALL_PEERS);
@@ -290,6 +291,7 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 					progressDialog.setCancelable(true);
 					progressDialog.show();
 					while (existPendingConnections()) {
+						// Wait until all peers are connected.
 					}
 					progressDialog.dismiss();
 					Log.i(TAG, "Connected to all devices.");
@@ -591,17 +593,23 @@ public class InitiatorActivity extends Activity implements ChannelListener, Devi
 		return new SetupNetworkPacket(bf, bfp, ecf);
 	}
 
+	/**
+	 * Returns true if there are any peers that are still being processed.
+	 */
 	private boolean existPendingConnections() {
 		DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
 		List<WifiP2pDevice> peers = fragmentDetails.getPeers();
 		for (int i = 0; i < peers.size(); i++) {
 			if (peers.get(i).status == WifiP2pDevice.INVITED) {
-				return false;
+				return true;
 			}
 		}
-		return true;
+		return false;
 	}
 
+	/**
+	 * Returns the total number of connected peers.
+	 */
 	private int getNumConnectedPeers() {
 		int num = 0;
 		DeviceListFragment fragmentDetails = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);

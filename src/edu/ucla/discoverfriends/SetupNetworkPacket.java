@@ -4,6 +4,10 @@ import java.io.Serializable;
 
 import com.google.common.hash.BloomFilter;
 
+/**
+ * Custom network packet class that serves as a serializable wrapper for the
+ * setup objects: 2 bloom filters and an encrypted certificate.
+ */
 public class SetupNetworkPacket implements Serializable {
 	private static final long serialVersionUID = 1L;
 	private BloomFilter<String> bf;	
